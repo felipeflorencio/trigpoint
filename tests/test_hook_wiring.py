@@ -6,7 +6,12 @@ other scripts, and that the commands a user is told to run exist.
 """
 
 import json
+import os
 import pathlib
+import shutil
+import subprocess
+import sys
+import tempfile
 import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
@@ -20,11 +25,14 @@ class HookManifestTests(unittest.TestCase):
         self.assertEqual(sorted(self.manifest["hooks"]), ["SessionStart", "Stop"])
 
     def test_every_registered_script_exists(self):
+        # A command reads: "<plugin root>/hooks/run-hook.cmd" script_name.py
         for event in self.manifest["hooks"].values():
             for group in event:
                 for hook in group["hooks"]:
-                    name = hook["command"].split("/hooks/")[1].strip('"')
-                    self.assertTrue((ROOT / "hooks" / name).exists(), name)
+                    wrapper, _, script = hook["command"].partition('" ')
+                    wrapper_name = wrapper.split("/hooks/")[1].strip('"')
+                    self.assertTrue((ROOT / "hooks" / wrapper_name).exists(), wrapper_name)
+                    self.assertTrue((ROOT / "hooks" / script.strip()).exists(), script)
 
     def test_every_hook_has_a_timeout(self):
         for event in self.manifest["hooks"].values():
@@ -68,3 +76,76 @@ class CommandTests(unittest.TestCase):
     def test_the_pause_command_says_how_to_undo_it(self):
         text = (ROOT / "commands" / "trigpoint-pause.md").read_text()
         self.assertIn("rm .trigpoint/paused", text)
+
+
+class WindowsWrapperTests(unittest.TestCase):
+    """The wrapper is what makes the hooks work where python3 does not exist."""
+
+    def setUp(self):
+        self.path = ROOT / "hooks" / "run-hook.cmd"
+        self.text = self.path.read_text()
+
+    def test_the_wrapper_exists_and_is_executable(self):
+        self.assertTrue(self.path.exists())
+        self.assertTrue(os.access(self.path, os.X_OK), "run-hook.cmd must be executable")
+
+    def test_it_looks_for_every_windows_python_name(self):
+        for launcher in ("py -3", "python3", "python"):
+            self.assertIn(launcher, self.text, launcher)
+
+    def test_a_machine_with_no_python_is_a_silent_no_op(self):
+        self.assertIn("exit /b 0", self.text, "Windows half must exit cleanly")
+        self.assertIn("exit 0", self.text, "Unix half must exit cleanly")
+
+    def test_both_hooks_are_invoked_through_the_wrapper(self):
+        manifest = json.loads((ROOT / "hooks" / "hooks.json").read_text())
+        for event in manifest["hooks"].values():
+            for group in event:
+                for hook in group["hooks"]:
+                    self.assertIn("run-hook.cmd", hook["command"])
+
+    def test_the_wrapper_actually_runs_a_hook(self):
+        directory = tempfile.mkdtemp(prefix="trigpoint-wrapper-")
+        try:
+            os.makedirs(os.path.join(directory, ".trigpoint"))
+            pathlib.Path(directory, "ROADMAP.md").write_text(
+                "# X\n\n## T1 One\n\n**Scope:** s\n**Blocked by:** nothing\n\n"
+                "- [ ] **1.1** Something\n"
+            )
+            result = subprocess.run(
+                ["bash", str(self.path), "session_start.py"],
+                cwd=directory, capture_output=True, text=True,
+            )
+            payload = json.loads(result.stdout)
+            self.assertIn("TRIGPOINT LEDGER",
+                          payload["hookSpecificOutput"]["additionalContext"])
+        finally:
+            shutil.rmtree(directory, ignore_errors=True)
+
+
+class GeneratedManifestTests(unittest.TestCase):
+    """Every harness manifest is generated, so none of them can drift."""
+
+    def test_no_generated_manifest_is_out_of_date(self):
+        result = subprocess.run(
+            [sys.executable, str(ROOT / "scripts" / "sync_plugin_variants.py"), "--check"],
+            capture_output=True, text=True,
+        )
+        self.assertEqual(result.returncode, 0, result.stdout)
+
+    def test_every_harness_has_a_manifest(self):
+        for relative in (".claude-plugin/plugin.json", ".claude-plugin/marketplace.json",
+                         ".codex-plugin/plugin.json", ".cursor-plugin/plugin.json",
+                         "gemini-extension.json"):
+            self.assertTrue((ROOT / relative).exists(), relative)
+
+    def test_every_manifest_states_the_same_version(self):
+        source = json.loads((ROOT / ".claude-plugin" / "plugin.json").read_text())
+        for relative in (".codex-plugin/plugin.json", ".cursor-plugin/plugin.json",
+                         "gemini-extension.json"):
+            other = json.loads((ROOT / relative).read_text())
+            self.assertEqual(other["version"], source["version"], relative)
+
+    def test_the_context_file_gemini_names_exists(self):
+        extension = json.loads((ROOT / "gemini-extension.json").read_text())
+        self.assertTrue((ROOT / extension["contextFileName"]).exists())

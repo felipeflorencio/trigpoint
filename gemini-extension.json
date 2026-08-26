@@ -1,0 +1,6 @@
+{
+  "name": "trigpoint",
+  "version": "0.1.0",
+  "description": "Audit a codebase, then produce a plan of record that cannot drift. Generates a ledger, a dashboard and a design spec, and keeps them true while the work is done.",
+  "contextFileName": "AGENTS.md"
+}

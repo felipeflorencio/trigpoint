@@ -1,0 +1,26 @@
+{
+  "name": "trigpoint",
+  "version": "0.1.0",
+  "description": "Audit a codebase, then produce a plan of record that cannot drift. Generates a ledger, a dashboard and a design spec, and keeps them true while the work is done.",
+  "author": {
+    "name": "Felipe Florencio"
+  },
+  "homepage": "https://github.com/felipeflorencio/trigpoint",
+  "repository": "https://github.com/felipeflorencio/trigpoint",
+  "license": "MIT",
+  "keywords": [
+    "planning",
+    "roadmap",
+    "audit",
+    "codebase",
+    "dashboard"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Trigpoint",
+    "shortDescription": "A plan of record that cannot drift, kept true while the work is done",
+    "longDescription": "Trigpoint audits a codebase, runs a question ladder to produce a ledger, a dashboard and a design spec, then keeps them true. Counts are generated rather than typed. A ticked task must carry the command that proved it, and those commands are re-run as work proceeds, so a task that stopped being true unticks itself instead of quietly staying green.",
+    "developerName": "Felipe Florencio",
+    "category": "Developer Tools"
+  }
+}

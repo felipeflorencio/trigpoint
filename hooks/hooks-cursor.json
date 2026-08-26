@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "hooks": {
+    "sessionStart": [
+      {
+        "command": "./hooks/run-hook.cmd session_start.py"
+      }
+    ],
+    "stop": [
+      {
+        "command": "./hooks/run-hook.cmd stop.py"
+      }
+    ]
+  }
+}
