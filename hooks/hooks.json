@@ -1,0 +1,27 @@
+{
+  "description": "Trigpoint keeps a ledger honest: it states the plan at session start, and at the end of a working turn it re-runs the commands the ledger already records, unticking anything that stopped being true. Silent in any repository that has not been initialised with .trigpoint/.",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/session_start.py\"",
+            "timeout": 20
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/stop.py\"",
+            "timeout": 180
+          }
+        ]
+      }
+    ]
+  }
+}

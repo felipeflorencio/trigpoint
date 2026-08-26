@@ -154,7 +154,7 @@ State once, at emit, as a statement rather than a question: **the ledger will be
 automatically as work proceeds, unless you say otherwise. Automatic is the default.** Persist the
 answer into the repository so no future session re-litigates it.
 
-Copy all four scripts into the target repository. Both CLIs import the other two modules, so
+Copy all five scripts into the target repository. Every CLI imports the ledger module, so
 copying only the CLIs leaves a broken install:
 
 ```bash
@@ -163,6 +163,7 @@ cp "${CLAUDE_PLUGIN_ROOT}/scripts/trigpoint_ledger.py" \
    "${CLAUDE_PLUGIN_ROOT}/scripts/trigpoint_render.py" \
    "${CLAUDE_PLUGIN_ROOT}/scripts/build_dashboard.py" \
    "${CLAUDE_PLUGIN_ROOT}/scripts/check_drift.py" \
+   "${CLAUDE_PLUGIN_ROOT}/scripts/trigpoint_verify.py" \
    .trigpoint/
 ```
 
@@ -183,6 +184,17 @@ python3 .trigpoint/build_dashboard.py
 
 Run it once now, before reporting the run finished, and report what it says applied and what it
 says was not applied, separately and verbatim.
+
+Creating `.trigpoint/` is also what switches the hooks on for this repository, and nothing else
+does. Until the skill has run here, the plugin is installed but inert: no session state is stated
+and nothing is ever run. Tell the user that in one sentence when you report the install, along
+with `/trigpoint-pause` if they want it to stop.
+
+From then on, at the end of a working turn, the commands recorded in `**Verified:**` lines are
+re-run and anything that stopped passing is unticked with a `**Regressed:**` note. Each distinct
+command must be approved once before it will run, which is what `/trigpoint-verify` is for.
+**Nothing is ever ticked automatically**, so writing an honest `**Verified:**` line remains the
+only way a box gets ticked.
 
 ## Red flags - STOP
 

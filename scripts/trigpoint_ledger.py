@@ -305,15 +305,48 @@ def _extract_tasks(numbered_lines: List[NumberedLine]) -> List[Task]:
     return tasks
 
 
+def _marker_outside_inline_code(text: str, marker: str) -> int:
+    """Index of the first `marker` that is not inside an inline code span, or -1.
+
+    A task whose own description quotes the evidence marker -- writing
+    `**Verified:**` in backticks while describing the rule -- must not have its
+    evidence read from the middle of that sentence. This is the same principle
+    the module already applies to fenced blocks, one level down: an example of
+    evidence is documentation, not evidence.
+
+    Backtick runs open and close a span, and a span is closed only by a run of
+    the same length, which is how markdown lets `` ` `` appear inside code.
+    """
+    index = 0
+    length = len(text)
+    open_run = 0
+    while index < length:
+        if text[index] == "`":
+            run = 0
+            while index + run < length and text[index + run] == "`":
+                run += 1
+            if open_run == 0:
+                open_run = run
+            elif run == open_run:
+                open_run = 0
+            index += run
+            continue
+        if open_run == 0 and text.startswith(marker, index):
+            return index
+        index += 1
+    return -1
+
+
 def _apply_evidence(task: Task, block_lines: List[str]) -> Task:
     block = "\n".join(block_lines)
-    position = block.find(EVIDENCE_MARKER)
+    position = _marker_outside_inline_code(block, EVIDENCE_MARKER)
     if position != -1:
         evidence = block[position + len(EVIDENCE_MARKER) :]
         task.evidence = " ".join(evidence.split()) or None
     first_line = block_lines[0] if block_lines else ""
-    if EVIDENCE_MARKER in first_line:
-        first_line = first_line.split(EVIDENCE_MARKER)[0]
+    first_line_marker = _marker_outside_inline_code(first_line, EVIDENCE_MARKER)
+    if first_line_marker != -1:
+        first_line = first_line[:first_line_marker]
     task.text = " ".join(first_line.split())
     return task
 
