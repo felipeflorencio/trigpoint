@@ -2,33 +2,78 @@
 
 # Trigpoint
 
-**Plans made by an agent go stale within a week, and a stale plan is worse than none, because it
-is still consulted.**
+**Your agent's plan was accurate the day it was written. It has not been accurate since.**
 
-Trigpoint is a Claude Code plugin. It audits a codebase, asks four questions in dependency order,
-and writes a plan of record whose counts are generated rather than typed and whose ticked boxes
-cannot exist without recorded evidence.
+Trigpoint is a Claude Code plugin that turns a codebase into a plan of record which cannot quietly
+go out of date.
 
-A trig point is the fixed concrete pillar on a hilltop that the surrounding landscape is
-triangulated from. A known reference that everything else is measured against. That is what the
-ledger is for a project.
+---
+
+## A week with an ordinary plan
+
+**Monday.** You ask an agent to plan the work. It reads the repository and produces something
+genuinely good: 40 tasks across 6 tracks, dependencies mapped, a summary table at the top.
+
+**Tuesday.** You finish three tasks. Two others turn out to have been done months ago. One of them
+uncovers four more that nobody knew existed.
+
+**Friday.** The table at the top still says **0 of 40 done**. Nobody updated it, because updating
+it was nobody's job. The four discovered tasks live in a chat window that has since been closed.
+
+**Next Monday.** A fresh session opens the plan and believes the table. It schedules work that is
+already finished, and it has never heard of the four tasks that turned out to matter most.
+
+The plan did not fail because it was wrong. It failed because it **stopped being true**, and
+nothing announced that it had.
+
+---
+
+## Why plans rot
+
+Three causes, none of which are fixed by trying harder.
+
+**Counts are typed by hand.** A header that reads "12 of 40" is one person's memory of the
+checkboxes below it. It is correct on the day it is written and wrong soon after. The fix is not
+more discipline. The fix is to stop typing it.
+
+**"Done" is a claim, not a fact.** A ticked box asserts that something happened. It carries no
+evidence that it did. An agent in a hurry ticks the box it believes is finished, and belief is not
+the same as having run the command and read the output.
+
+**Discovered work has nowhere to land.** The most valuable thing a week of implementation produces
+is the work nobody predicted. It gets mentioned in conversation, and it dies when the session ends.
+
+---
+
+## What Trigpoint does about it
+
+**Nobody types a number.** The summary table is regenerated from the task lists themselves. A
+count cannot disagree with the tasks it counts, because it is derived from them. Continuous
+integration regenerates it and fails the build on any difference, so drift is not discouraged, it
+is impossible.
+
+**A tick requires evidence.** A ticked task must carry the command that was run and what it
+printed. There is no exemption for obvious tasks, and no setting to turn it off, because the moment
+there is one an agent decides what counts as obvious. Six months later you can see not only that
+something was done, but how anyone knew.
+
+**The rules live in your repository.** They are written into your `CLAUDE.md` as plain markdown, so
+every future session picks them up automatically, and a colleague who has never installed this
+plugin still gets them.
+
+**The questions come after the evidence.** Trigpoint audits the code before it asks you anything,
+so the options it offers are drawn from what is actually there. A plan built from a README is a
+plan built from a claim.
 
 ---
 
 ## What you get
 
-- **A plan you can trust the numbers on.** Every count is generated from the task lists. The
-  summary at the top of your roadmap cannot quietly disagree with the tasks below it, because
-  nobody types it.
-- **Progress you can believe.** A ticked box carries the command that was run and what it printed.
-  Six months later you can see not just that something was done, but how anyone knew.
-- **A plan that survives context resets.** It lives in your repository, not in a chat window. A
-  new session, a new machine, or a colleague who has never installed this picks up where the last
-  one stopped.
-- **Questions grounded in your actual code.** The audit runs first, so the options you are offered
-  come from what is really there, not from what a README claims is there.
-- **Something to look at, not just read.** A generated dashboard for scanning, alongside the
-  markdown for working.
+- **Numbers you can trust.** Generated, never typed.
+- **Progress you can believe.** Every completed task carries proof.
+- **A plan that survives context resets.** It lives in the repository, not in a chat window.
+- **Questions grounded in your real code**, not in what the documentation claims.
+- **Something to scan as well as read.** A generated dashboard alongside the markdown.
 
 ---
 
@@ -149,13 +194,12 @@ did not, so an absent lane never passes for a clean one.
 
 ---
 
-## What it guarantees, and the proof
+## Watch it refuse
 
-### Counts cannot drift
+Both transcripts below are real output, run against this repository.
 
-The progress table is generated, never authored. Hand-edit a number and the next regeneration
-overwrites it. Here that is done deliberately, on a scratch copy of this repository's own ledger:
-the `Total` row was edited by hand from `19 | 17` to `24 | 22`, then the generator was run.
+**A hand-edited count does not survive.** The `Total` row was edited by hand from `19 | 17` to
+`24 | 22` on a scratch copy, then the generator was run:
 
 ```
 $ grep -n "Total" ROADMAP.md
@@ -169,25 +213,17 @@ $ grep -n "Total" ROADMAP.md
 27:| **Total** | | 19 | 17 | |
 ```
 
-CI closes the loop: `.github/workflows/checks.yml` regenerates both files and then runs
-`git diff --exit-code` on them, so a committed count that disagrees with the task lines fails the
-build.
+CI closes the loop: the workflow regenerates both files and runs `git diff --exit-code`, so a
+committed count that disagrees with the tasks fails the build.
 
-### A box cannot be ticked without recorded evidence
-
-`check_drift.py` reads the ledger, writes nothing, and exits non-zero on an error. A ticked task
-with no `**Verified:**` line is an error. So is a `**Verified:**` line that still holds an
-unfilled `{{ placeholder }}`, because a template someone forgot to fill in is not evidence.
-
-Run against a scratch ledger holding one of each:
+**A tick without evidence does not pass.** Two ticked tasks, one with no evidence at all and one
+whose evidence is still an unfilled template:
 
 ```markdown
 - [x] **1.1** Wire the export endpoint
 - [x] **1.2** Add the retry budget
       **Verified:** {{ command and output }}
 ```
-
-this is what it printed:
 
 ```
 $ python3 .trigpoint/check_drift.py ROADMAP.md; echo "exit code: $?"
@@ -196,15 +232,6 @@ ERROR  ROADMAP.md:9  task 1.2 is ticked but its **Verified:** line still contain
 2 error(s), 0 warning(s) in ROADMAP.md
 exit code: 1
 ```
-
-There is no exemption clause and no configuration for it. An exemption lets an agent decide what
-is obvious, and "the change was obvious" is the failure being prevented.
-
-### The instruction survives the plugin
-
-A run installs a delimited block into the target repository's own `CLAUDE.md`, so a future session
-in a fresh window keeps the ledger discipline even with the plugin not loaded. Re-running updates
-that block in place rather than stacking a second copy.
 
 ---
 
