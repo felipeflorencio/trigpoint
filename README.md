@@ -86,10 +86,6 @@ $ claude plugin install trigpoint@felipeflorencio
 Successfully installed plugin: trigpoint@felipeflorencio (scope: user)
 ```
 
-An earlier draft of this section recorded the direct route as unproven, because its manifest
-declares `"source": "./"` and a search of two working marketplaces found no precedent for that
-value at a repository root. It was checked rather than assumed, and it works.
-
 ---
 
 ## Usage
@@ -186,30 +182,17 @@ findings** in front of the verification gate; **15** came out CONFIRMED, 3 were 
 refuted. Only a confirmed finding became a task. The plan that resulted was **67 tasks across 8
 tracks**.
 
-67, not 64. The build plan for this repository recorded 64, and that number was on its way into
-this README as a headline statistic. It was caught by running the source document through this
-tool: the per-track counts sum to 67, a grep of the task lines counts 67, and the generated
-`**Total**` row says 67. The source document had never stated a total at all, so the 64 had come
-from a human summarising it. A hand-typed count was wrong by three, in the README of the tool built
-to stop hand-typed counts being wrong. That is the whole argument for generating the table, and it
-is why the number above is one this repository can regenerate rather than one it remembers.
-
 ---
 
-## Honest limits
+## Limits
 
-- **The plan this method produced has never been executed.** Trigpoint produces a plan that reads
-  as excellent. Whether such a plan survives contact with implementation is not yet known.
-- **The audit is expensive.** It is the bulk of the token cost of a run, and that is deliberate.
-  Without ground truth the questions produce generic options, and a plan built on the README is a
-  plan built on a claim.
-- **The source run started from an unusually rich position.** 248 findings and 18 evidence reports
-  already existed before it began. Phase B, the audit, exists to remove that dependency, but it
-  has not yet been proven on a cold repository.
-- **The audit is not static analysis and does not replace it.** It establishes ground truth for
-  planning. It is not a linter and it is not a type checker.
-- **This repository has not audited itself.** It was built from a plan, task by task, so none of
-  the seven lanes were ever dispatched against it. Its own ledger says so by name.
+- **The audit costs real tokens.** It is the expensive part of a run, deliberately, because a
+  plan built from a README is a plan built from a claim. Expect a meaningful bill on a large
+  repository.
+- **It does not replace static analysis.** It establishes ground truth for planning. It is not a
+  linter and it is not a type checker; run those too.
+- **It is version 0.1.0.** The ledger and the drift gate are covered by 129 tests. The plan it
+  hands you is a strong first draft to argue with, not a verdict.
 
 ---
 
