@@ -1,0 +1,14 @@
+{
+  "name": "trigpoint",
+  "description": "Trigpoint, installed directly from its own repository.",
+  "owner": { "name": "Felipe Florencio" },
+  "plugins": [
+    {
+      "name": "trigpoint",
+      "description": "Audit a codebase, then produce a plan of record that cannot drift.",
+      "category": "development",
+      "source": "./",
+      "homepage": "https://github.com/felipeflorencio/trigpoint"
+    }
+  ]
+}

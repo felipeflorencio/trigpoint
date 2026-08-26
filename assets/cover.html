@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<title>Trigpoint</title>
+<style>
+/* Palette tokens taken verbatim from DASHBOARD_STYLE in scripts/trigpoint_render.py,
+   so the cover and the product it advertises agree on colour. The artboard is a
+   fixed-size social preview, so only the light palette is used. */
+:root {
+  --page: #f6f5f2; --ink: #1b1c1e; --muted: #6a6b70;
+  --rule: #d9d7d1; --panel: #ffffff; --accent: #b4541f;
+  --done: #2f6f4f; --open: #9a9893;
+}
+html, body {
+  width: 1280px; height: 640px; margin: 0; padding: 0; overflow: hidden;
+  background: var(--page); color: var(--ink);
+  font: 16px/1.55 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+.board {
+  width: 1280px; height: 640px; box-sizing: border-box;
+  padding: 92px 80px 92px 88px; display: flex; align-items: center; gap: 24px;
+  border-top: 6px solid var(--accent);
+}
+.copy { flex: 1 1 auto; min-width: 0; max-width: 660px; }
+.eyebrow {
+  font-size: 17px; letter-spacing: .22em; text-transform: uppercase;
+  color: var(--muted); margin: 0 0 26px;
+}
+.wordmark {
+  font-size: 40px; letter-spacing: .30em; text-transform: uppercase;
+  font-weight: 600; margin: 0 0 30px; color: var(--ink);
+}
+.claim {
+  font-size: 64px; line-height: 1.12; font-weight: 600; margin: 0;
+  letter-spacing: -.015em; border-left: 5px solid var(--accent); padding-left: 28px;
+}
+.figure { flex: 0 0 440px; }
+svg { display: block; width: 440px; height: 440px; }
+</style>
+</head>
+<body>
+<div class="board">
+  <div class="copy">
+    <p class="eyebrow">A plugin for Claude Code</p>
+    <p class="wordmark">Trigpoint</p>
+    <p class="claim">A plan of record<br>that cannot drift.</p>
+  </div>
+  <div class="figure">
+    <!-- One claim: every mark in the landscape is measured from the fixed pillar.
+         The accent is spent entirely on the pillar and the sight lines leaving it. -->
+    <svg viewBox="0 0 400 400" role="img" aria-label="A trig point pillar on a hilltop with sight lines to four marks">
+      <g stroke="var(--rule)" fill="none" stroke-width="1.5">
+        <path d="M8 300 C 70 268, 118 292, 168 268 C 214 246, 258 274, 312 254 C 348 241, 372 248, 392 242"/>
+        <path d="M8 334 C 78 312, 130 332, 186 312 C 238 293, 286 316, 336 300 C 362 292, 378 296, 392 292"/>
+        <path d="M8 368 C 88 352, 148 370, 208 354 C 262 340, 312 358, 358 348 C 376 344, 386 346, 392 344"/>
+      </g>
+      <path d="M52 300 C 108 300, 140 214, 200 214 C 260 214, 292 300, 348 300 Z"
+            fill="none" stroke="var(--muted)" stroke-width="2"/>
+      <g stroke="var(--accent)" stroke-width="1.6" stroke-dasharray="7 6" fill="none">
+        <line x1="200" y1="150" x2="46" y2="70"/>
+        <line x1="200" y1="150" x2="122" y2="36"/>
+        <line x1="200" y1="150" x2="296" y2="44"/>
+        <line x1="200" y1="150" x2="360" y2="126"/>
+      </g>
+      <g fill="none" stroke="var(--muted)" stroke-width="2">
+        <circle cx="46" cy="70" r="9"/>
+        <circle cx="122" cy="36" r="9"/>
+        <circle cx="296" cy="44" r="9"/>
+        <circle cx="360" cy="126" r="9"/>
+      </g>
+      <line x1="156" y1="216" x2="244" y2="216" stroke="var(--ink)" stroke-width="3"/>
+      <path d="M181 216 L183 158 L217 158 L219 216 Z" fill="var(--accent)"/>
+      <rect x="183" y="146" width="34" height="12" fill="var(--ink)"/>
+      <circle cx="200" cy="150" r="4.5" fill="var(--page)" stroke="var(--ink)" stroke-width="2"/>
+    </svg>
+  </div>
+</div>
+</body></html>

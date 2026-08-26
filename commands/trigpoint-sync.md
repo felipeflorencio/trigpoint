@@ -1,0 +1,12 @@
+---
+description: Regenerate the ledger progress table and the dashboard from ROADMAP.md
+---
+
+Run `python3 .trigpoint/build_dashboard.py` in the repository root.
+
+Report what was applied and what was not, separately and verbatim. If the
+script reports validation errors, list them and stop; do not tick, untick or
+edit any task to make the errors go away.
+
+If a dashboard artifact URL is recorded in the ledger header, republish to that
+same URL rather than creating a new one.

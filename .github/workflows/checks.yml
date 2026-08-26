@@ -1,0 +1,22 @@
+name: checks
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+      - name: Unit tests
+        run: python3 -m unittest discover -s tests -v
+      - name: Ledger drift gate
+        run: python3 scripts/check_drift.py ROADMAP.md
+      - name: Dashboard is up to date
+        run: |
+          python3 scripts/build_dashboard.py --ledger ROADMAP.md --output roadmap-dashboard.html
+          git diff --exit-code ROADMAP.md roadmap-dashboard.html
