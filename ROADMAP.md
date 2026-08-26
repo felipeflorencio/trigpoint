@@ -24,8 +24,8 @@ Generated. Do not hand-edit anything between the markers. Run `python3 scripts/b
 | **T3 Installation** | The CLAUDE.md instruction block installer | 3 | 3 | T1 |
 | **T4 Packaging** | The plugin and marketplace manifests, the slash commands, and the skill with its references and templates | 4 | 4 | T1, T2, T3 |
 | **T5 Publication** | The README, the cover art, the published marketplace listing, and a verified real install | 2 | 0 | T4 |
-| **T6 Continuous verification** | The hooks that state the plan at session start and re-prove it at the end of a turn, the approval gate that keeps command execution safe, and the parser fix that made the re-run trustworthy | 5 | 4 | nothing |
-| **Total** | | 24 | 21 | |
+| **T6 Continuous verification** | The hooks that state the plan at session start and re-prove it at the end of a turn, the approval gate that keeps command execution safe, and the parser fix that made the re-run trustworthy | 8 | 6 | nothing |
+| **Total** | | 27 | 23 | |
 <!-- trigpoint:progress:end -->
 
 T1 is the only true blocker: nothing downstream works without a parser and a gate that trusts
@@ -221,6 +221,21 @@ stays with a person.
       `/trigpoint-pause` stops the hooks in a repository
       **Verified:** `python3 -m unittest tests.test_hook_wiring -v` -> `Ran 11 tests in 0.002s` /
       `OK`. 2026-08-26
+- [x] **6.6** Reach past Claude Code: a generated manifest per harness (Codex, Cursor, Gemini,
+      plus `AGENTS.md` at the root), all derived from `.claude-plugin/plugin.json` by
+      `scripts/sync_plugin_variants.py` with a CI gate, because six hand-copied manifests would
+      be this project's own failure aimed at itself
+      **Verified:** `python3 scripts/sync_plugin_variants.py --check` -> `every generated
+      manifest matches .claude-plugin/plugin.json`. 2026-08-27
+- [x] **6.7** Make the hooks survive Windows: `hooks/run-hook.cmd`, a polyglot wrapper that finds
+      `py -3`, `python3` or `python` and exits quietly when none exists, so a machine without
+      Python keeps a working session rather than a failing hook. Technique borrowed from
+      obra/superpowers, which uses it to find bash
+      **Verified:** `python3 -m unittest tests.test_hook_wiring -v` -> `Ran 20 tests in 0.358s` /
+      `OK`. 2026-08-27
+- [ ] **6.8** Verify one non-Claude harness by actually installing it. The Codex, Cursor and
+      Gemini manifests are built to each published shape but none has been installed, so they are
+      a claim rather than a fact until one is
 - [ ] **6.5** Prove it against a project that is not this one. The dogfood run here unticked four
       tasks correctly when the renderer was broken, but it also showed that a repository managing
       ITSELF shares one parser between the checker and the checked, so sabotaging the parser

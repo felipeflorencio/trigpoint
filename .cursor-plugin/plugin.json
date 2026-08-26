@@ -1,0 +1,21 @@
+{
+  "name": "trigpoint",
+  "displayName": "Trigpoint",
+  "version": "0.1.0",
+  "description": "Audit a codebase, then produce a plan of record that cannot drift. Generates a ledger, a dashboard and a design spec, and keeps them true while the work is done.",
+  "author": {
+    "name": "Felipe Florencio"
+  },
+  "homepage": "https://github.com/felipeflorencio/trigpoint",
+  "repository": "https://github.com/felipeflorencio/trigpoint",
+  "license": "MIT",
+  "keywords": [
+    "planning",
+    "roadmap",
+    "audit",
+    "codebase",
+    "dashboard"
+  ],
+  "skills": "./skills/",
+  "hooks": "./hooks/hooks-cursor.json"
+}

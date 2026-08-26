@@ -164,6 +164,34 @@ $ claude plugin install trigpoint@felipeflorencio
 Successfully installed plugin: trigpoint@felipeflorencio (scope: user)
 ```
 
+### Other agents
+
+The skills, the scripts and the ledger format have nothing Claude-specific in them, so the same
+plugin ships a manifest for several harnesses. Each is generated from
+`.claude-plugin/plugin.json`, and CI fails if one drifts.
+
+| Harness | Manifest |
+| --- | --- |
+| Claude Code | `.claude-plugin/plugin.json` |
+| Codex | `.codex-plugin/plugin.json` |
+| Cursor | `.cursor-plugin/plugin.json` |
+| Gemini CLI | `gemini-extension.json`, with `AGENTS.md` as the context file |
+| Anything reading `AGENTS.md` | `AGENTS.md` at the repository root |
+
+**Only the Claude Code route has been installed and run end to end.** The others are manifests
+built to each harness's published shape and are unverified until someone installs one, which is
+worth knowing before you rely on them.
+
+### Requirements
+
+Python 3.9 or later, standard library only. Nothing to `pip install`. macOS and Linux already
+have it.
+
+On Windows the hooks run through `hooks/run-hook.cmd`, a polyglot wrapper that finds `py -3`,
+`python3` or `python`. If none of them exist it exits quietly, so the session works exactly as
+before, just without the ledger state and the re-run. The technique is borrowed from
+[obra/superpowers](https://github.com/obra/superpowers), which uses the same trick to find bash.
+
 ---
 
 ## Usage

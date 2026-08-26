@@ -47,7 +47,7 @@ footer { color: var(--muted); font-size: .82rem; border-top: 1px solid var(--rul
 </style>
 </head><body><div class="wrap">
 <p class="headline">This repository now runs its own drift gate in CI, so a ledger that lies about its own evidence fails its own build before it fails anyone else&#x27;s.</p>
-<p class="meta">21 of 24 tasks complete across 6 tracks.</p>
+<p class="meta">23 of 27 tasks complete across 6 tracks.</p>
 <section class="track">
 <h2>T1 Parser and gate</h2>
 <p class="meta">The ledger model, its validation rules, and the read-only CI gate built on them &middot; blocked by nothing &middot; 6 / 6</p>
@@ -135,8 +135,8 @@ footer { color: var(--muted); font-size: .82rem; border-top: 1px solid var(--rul
 </ul></section>
 <section class="track">
 <h2>T6 Continuous verification</h2>
-<p class="meta">The hooks that state the plan at session start and re-prove it at the end of a turn, the approval gate that keeps command execution safe, and the parser fix that made the re-run trustworthy &middot; blocked by nothing &middot; 4 / 5</p>
-<div class="bar"><span style="width:80%"></span></div>
+<p class="meta">The hooks that state the plan at session start and re-prove it at the end of a turn, the approval gate that keeps command execution safe, and the parser fix that made the re-run trustworthy &middot; blocked by nothing &middot; 6 / 8</p>
+<div class="bar"><span style="width:75%"></span></div>
 <ul class="tasks">
 <li><span class="state done">x</span><span class="task-id">6.1</span>Write `scripts/trigpoint_verify.py`: read the command out of each ticked task&#x27;s
 <span class="evidence">`python3 -m unittest tests.test_verify -v` -&gt; `Ran 23 tests in 0.001s` / `OK`. 2026-08-26</span>
@@ -149,6 +149,14 @@ footer { color: var(--muted); font-size: .82rem; border-top: 1px solid var(--rul
 </li>
 <li><span class="state done">x</span><span class="task-id">6.4</span>Wire it into installation: the skill copies the verifier alongside the other
 <span class="evidence">`python3 -m unittest tests.test_hook_wiring -v` -&gt; `Ran 11 tests in 0.002s` / `OK`. 2026-08-26</span>
+</li>
+<li><span class="state done">x</span><span class="task-id">6.6</span>Reach past Claude Code: a generated manifest per harness (Codex, Cursor, Gemini,
+<span class="evidence">`python3 scripts/sync_plugin_variants.py --check` -&gt; `every generated manifest matches .claude-plugin/plugin.json`. 2026-08-27</span>
+</li>
+<li><span class="state done">x</span><span class="task-id">6.7</span>Make the hooks survive Windows: `hooks/run-hook.cmd`, a polyglot wrapper that finds
+<span class="evidence">`python3 -m unittest tests.test_hook_wiring -v` -&gt; `Ran 20 tests in 0.358s` / `OK`. 2026-08-27</span>
+</li>
+<li><span class="state">-</span><span class="task-id">6.8</span>Verify one non-Claude harness by actually installing it. The Codex, Cursor and
 </li>
 <li><span class="state">-</span><span class="task-id">6.5</span>Prove it against a project that is not this one. The dogfood run here unticked four
 </li>
