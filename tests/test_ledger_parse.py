@@ -481,3 +481,49 @@ class HardWrappedMetadataTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class InlineCodeEvidenceTests(unittest.TestCase):
+    """A task that quotes the evidence marker must not have evidence read from it.
+
+    Found by re-running the commands this repository's own ledger records: task
+    1.2 describes the rule using `**Verified:**` in backticks, and the evidence
+    scan matched that occurrence rather than the real line below it. Validation
+    passed throughout, because the field was non-empty - it was simply wrong.
+    """
+
+    LEDGER = """# Example - Roadmap
+
+## T1 Parser
+
+**Scope:** The parser
+**Blocked by:** nothing
+
+- [x] **1.1** Write validation: a ticked task with no `**Verified:**` line is an error, and
+      an unknown `**Blocked by:**` reference is a warning
+      **Verified:** `python3 -m unittest tests.test_ledger_validate -v` -> `OK`. 2026-08-26
+"""
+
+    def setUp(self):
+        self.task = parse_ledger(self.LEDGER).tracks[0].tasks[0]
+
+    def test_evidence_starts_at_the_real_marker(self):
+        self.assertTrue(
+            self.task.evidence.startswith("`python3 -m unittest"),
+            "evidence was read from the quoted marker inside the description",
+        )
+
+    def test_the_description_keeps_its_quoted_marker(self):
+        # text is the task's first line by design, so only the marker quoted
+        # there is expected here.
+        self.assertIn("`**Verified:**`", self.task.text)
+
+    def test_the_description_stops_before_the_real_evidence(self):
+        self.assertNotIn("python3 -m unittest", self.task.text)
+
+    def test_a_quoted_marker_alone_is_not_evidence(self):
+        ledger = parse_ledger(
+            "# X\n\n## T1 One\n\n**Scope:** s\n**Blocked by:** nothing\n\n"
+            "- [ ] **1.1** Mentions `**Verified:**` and nothing more\n"
+        )
+        self.assertIsNone(ledger.tracks[0].tasks[0].evidence)

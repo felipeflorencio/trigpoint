@@ -24,12 +24,14 @@ Generated. Do not hand-edit anything between the markers. Run `python3 scripts/b
 | **T3 Installation** | The CLAUDE.md instruction block installer | 3 | 3 | T1 |
 | **T4 Packaging** | The plugin and marketplace manifests, the slash commands, and the skill with its references and templates | 4 | 4 | T1, T2, T3 |
 | **T5 Publication** | The README, the cover art, the published marketplace listing, and a verified real install | 2 | 0 | T4 |
-| **Total** | | 19 | 17 | |
+| **T6 Continuous verification** | The hooks that state the plan at session start and re-prove it at the end of a turn, the approval gate that keeps command execution safe, and the parser fix that made the re-run trustworthy | 5 | 4 | nothing |
+| **Total** | | 24 | 21 | |
 <!-- trigpoint:progress:end -->
 
 T1 is the only true blocker: nothing downstream works without a parser and a gate that trusts
-its own evidence rule. T2, T3 and T4 each depend on T1 but not on each other, and T5, the two
-tasks that remain, is genuinely not started.
+its own evidence rule. T2, T3 and T4 each depend on T1 but not on each other. T6 depends on
+nothing, because it re-runs what the ledger already records. What remains is T5, which is
+genuinely not started, and 6.5, which needs a project other than this one.
 
 ```
 T1 PARSER AND GATE (blocking)
@@ -184,6 +186,45 @@ it from outside this checkout.
 - [ ] **5.1** Write the README and the cover art
 - [ ] **5.2** Publish the plugin to a marketplace and verify a real install from outside this
       checkout
+
+## T6 Continuous verification
+
+**Scope:** The hooks that state the plan at session start and re-prove it at the end of a turn,
+the approval gate that keeps command execution safe, and the parser fix that made the re-run
+trustworthy
+**Blocked by:** nothing
+
+`check_drift.py` proves a ticked task CARRIES evidence. Nothing proved the evidence was STILL
+TRUE, and that gap is the failure this plugin exists to close. Every `**Verified:**` line already
+holds the command that proved the task, so re-running it needs no new ledger syntax. Nothing here
+ever ticks a box: a machine can show a claim has become false, but deciding that work is finished
+stays with a person.
+
+- [x] **6.1** Write `scripts/trigpoint_verify.py`: read the command out of each ticked task's
+      `**Verified:**` line, re-run only commands a human approved by hash, and untick anything
+      that stopped passing with a `**Regressed:**` note that leaves the original evidence intact
+      **Verified:** `python3 -m unittest tests.test_verify -v` -> `Ran 23 tests in 0.001s` /
+      `OK`. 2026-08-26
+- [x] **6.2** Write the two hooks and the project guard: state the ledger at session start,
+      re-prove it at the end of a turn, and exit silently in any directory that has not been
+      initialised with `.trigpoint/`, that is paused, or that set `TRIGPOINT_DISABLE`
+      **Verified:** `python3 -m unittest tests.test_hooks -v` -> `Ran 19 tests in 0.584s` /
+      `OK`. 2026-08-26
+- [x] **6.3** Fix the evidence scan: a task whose own description quotes the marker in backticks
+      had its evidence read from the middle of that sentence, and validation passed because the
+      field was merely non-empty rather than correct. Found by re-running this repository's own
+      recorded commands, which is the mechanism catching a defect in itself
+      **Verified:** `python3 -m unittest tests.test_ledger_parse -v` -> `Ran 41 tests in 0.003s` /
+      `OK`. 2026-08-26
+- [x] **6.4** Wire it into installation: the skill copies the verifier alongside the other
+      scripts, `/trigpoint-verify` reviews and approves commands one at a time, and
+      `/trigpoint-pause` stops the hooks in a repository
+      **Verified:** `python3 -m unittest tests.test_hook_wiring -v` -> `Ran 11 tests in 0.002s` /
+      `OK`. 2026-08-26
+- [ ] **6.5** Prove it against a project that is not this one. The dogfood run here unticked four
+      tasks correctly when the renderer was broken, but it also showed that a repository managing
+      ITSELF shares one parser between the checker and the checked, so sabotaging the parser
+      silently disables the checker. That blind spot needs a real second project to characterise
 
 ---
 

@@ -47,7 +47,7 @@ footer { color: var(--muted); font-size: .82rem; border-top: 1px solid var(--rul
 </style>
 </head><body><div class="wrap">
 <p class="headline">This repository now runs its own drift gate in CI, so a ledger that lies about its own evidence fails its own build before it fails anyone else&#x27;s.</p>
-<p class="meta">17 of 19 tasks complete across 5 tracks.</p>
+<p class="meta">21 of 24 tasks complete across 6 tracks.</p>
 <section class="track">
 <h2>T1 Parser and gate</h2>
 <p class="meta">The ledger model, its validation rules, and the read-only CI gate built on them &middot; blocked by nothing &middot; 6 / 6</p>
@@ -56,8 +56,8 @@ footer { color: var(--muted); font-size: .82rem; border-top: 1px solid var(--rul
 <li><span class="state done">x</span><span class="task-id">1.1</span>Write the ledger parser: sections become tracks only when they carry a `**Scope:**`
 <span class="evidence">`python3 -m unittest tests.test_ledger_parse -v` -&gt; `Ran 22 tests in 0.002s` / `OK`. 2026-08-26</span>
 </li>
-<li><span class="state done">x</span><span class="task-id">1.2</span>Write ledger validation: a ticked task with no `
-<span class="evidence">` line is an error, a duplicate task id is an error, an unknown `**Blocked by:**` reference is a warning **Verified:** `python3 -m unittest tests.test_ledger_validate -v` -&gt; `Ran 18 tests in 0.001s` / `OK`. 2026-08-26</span>
+<li><span class="state done">x</span><span class="task-id">1.2</span>Write ledger validation: a ticked task with no `**Verified:**` line is an error, a
+<span class="evidence">`python3 -m unittest tests.test_ledger_validate -v` -&gt; `Ran 18 tests in 0.001s` / `OK`. 2026-08-26</span>
 </li>
 <li><span class="state done">x</span><span class="task-id">1.3</span>Write `scripts/check_drift.py`, the read-only CI gate over the same parse, with
 <span class="evidence">`python3 -m unittest tests.test_check_drift -v` -&gt; `Ran 7 tests in 0.002s` / `OK`. 2026-08-26</span>
@@ -131,6 +131,26 @@ footer { color: var(--muted); font-size: .82rem; border-top: 1px solid var(--rul
 <li><span class="state">-</span><span class="task-id">5.1</span>Write the README and the cover art
 </li>
 <li><span class="state">-</span><span class="task-id">5.2</span>Publish the plugin to a marketplace and verify a real install from outside this
+</li>
+</ul></section>
+<section class="track">
+<h2>T6 Continuous verification</h2>
+<p class="meta">The hooks that state the plan at session start and re-prove it at the end of a turn, the approval gate that keeps command execution safe, and the parser fix that made the re-run trustworthy &middot; blocked by nothing &middot; 4 / 5</p>
+<div class="bar"><span style="width:80%"></span></div>
+<ul class="tasks">
+<li><span class="state done">x</span><span class="task-id">6.1</span>Write `scripts/trigpoint_verify.py`: read the command out of each ticked task&#x27;s
+<span class="evidence">`python3 -m unittest tests.test_verify -v` -&gt; `Ran 23 tests in 0.001s` / `OK`. 2026-08-26</span>
+</li>
+<li><span class="state done">x</span><span class="task-id">6.2</span>Write the two hooks and the project guard: state the ledger at session start,
+<span class="evidence">`python3 -m unittest tests.test_hooks -v` -&gt; `Ran 19 tests in 0.584s` / `OK`. 2026-08-26</span>
+</li>
+<li><span class="state done">x</span><span class="task-id">6.3</span>Fix the evidence scan: a task whose own description quotes the marker in backticks
+<span class="evidence">`python3 -m unittest tests.test_ledger_parse -v` -&gt; `Ran 41 tests in 0.003s` / `OK`. 2026-08-26</span>
+</li>
+<li><span class="state done">x</span><span class="task-id">6.4</span>Wire it into installation: the skill copies the verifier alongside the other
+<span class="evidence">`python3 -m unittest tests.test_hook_wiring -v` -&gt; `Ran 11 tests in 0.002s` / `OK`. 2026-08-26</span>
+</li>
+<li><span class="state">-</span><span class="task-id">6.5</span>Prove it against a project that is not this one. The dogfood run here unticked four
 </li>
 </ul></section>
 <section class="track"><h2>Definition of done</h2>
