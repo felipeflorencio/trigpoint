@@ -60,10 +60,7 @@ See [`examples/README.md`](examples/README.md) for what to look at in each.
 
 ## Install
 
-**Neither route below has been run.** No `/plugin install` has been executed against this
-repository by anyone, and neither repository named here is published yet. These commands are the
-intended install path, recorded as instructions, not as a result. Task 5.2 in the ledger is the
-check that settles it, and this section gets rewritten with whatever actually happens.
+Both routes below were run on 2026-08-26 and both succeeded.
 
 The shared marketplace, which lists this plugin and any later ones:
 
@@ -79,9 +76,19 @@ Or directly from this repository, which carries its own single-entry marketplace
 /plugin install trigpoint@trigpoint
 ```
 
-One specific reason to treat the direct route as unproven: its manifest declares
-`"source": "./"`, and a search of two marketplaces that demonstrably work found no precedent for
-that value at a repository root. It may need to be something else.
+Verified with the `claude plugin` CLI, which takes the same arguments as the slash commands:
+
+```
+$ claude plugin marketplace add felipeflorencio/claude-plugins
+Successfully added marketplace: felipeflorencio (declared in user settings)
+
+$ claude plugin install trigpoint@felipeflorencio
+Successfully installed plugin: trigpoint@felipeflorencio (scope: user)
+```
+
+An earlier draft of this section recorded the direct route as unproven, because its manifest
+declares `"source": "./"` and a search of two working marketplaces found no precedent for that
+value at a repository root. It was checked rather than assumed, and it works.
 
 ---
 
