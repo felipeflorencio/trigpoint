@@ -15,6 +15,39 @@ ledger is for a project.
 
 ---
 
+## What you get
+
+- **A plan you can trust the numbers on.** Every count is generated from the task lists. The
+  summary at the top of your roadmap cannot quietly disagree with the tasks below it, because
+  nobody types it.
+- **Progress you can believe.** A ticked box carries the command that was run and what it printed.
+  Six months later you can see not just that something was done, but how anyone knew.
+- **A plan that survives context resets.** It lives in your repository, not in a chat window. A
+  new session, a new machine, or a colleague who has never installed this picks up where the last
+  one stopped.
+- **Questions grounded in your actual code.** The audit runs first, so the options you are offered
+  come from what is really there, not from what a README claims is there.
+- **Something to look at, not just read.** A generated dashboard for scanning, alongside the
+  markdown for working.
+
+---
+
+## When to reach for it
+
+- **You have inherited a codebase** and need to know what is real before promising anything.
+- **A project has gone dormant** and you cannot tell what still works, what half-shipped, and what
+  should simply be deleted.
+- **An agent wrote you a plan** and a week later you no longer trust it.
+- **The work will span many sessions**, so whatever holds the plan has to outlive any one of them.
+- **Several people or agents are working in parallel** and you need one place that says what is
+  actually done.
+
+It is a poor fit for a small change you can hold in your head, or for a greenfield project with no
+existing code to audit. It earns its keep where there is more truth to establish than you can keep
+in working memory.
+
+---
+
 ## What a run produces
 
 Three linked artefacts. The examples below are not mock-ups: they are this repository's own
@@ -99,16 +132,16 @@ A whole run has **seven interaction touchpoints**, and after the last one the sk
 again on that project. "Blocks" means it stops and waits, because only you hold that fact and
 guessing it would build the plan on an invented premise.
 
-| # | Phase | What | If you say nothing |
-| --- | --- | --- | --- |
-| - | C | The premise check. A statement, not a question. | - |
-| 1 | A | Which audit lanes, pre-ticked with reasons drawn from your repo | Runs all seven |
-| 2 | D | How do you run what you already have deployed? | Blocks |
-| 3 | D | What is this work actually aiming at? | Blocks |
-| 4 | D | Half-built areas: deleted, flagged off, or finished? | Blocks |
-| 5 | D | What access do I have, and can I verify the result myself? | Blocks |
-| 6 | E | Section-by-section approval of the design | Blocks |
-| 7 | F | Automatic updates, unless you say otherwise | Automatic |
+| # | What | If you say nothing |
+| --- | --- | --- |
+| - | The premise check. A statement, not a question. | - |
+| 1 | Which audit lanes, pre-ticked with reasons drawn from your repo | Runs all seven |
+| 2 | How do you run what you already have deployed? | Blocks |
+| 3 | What is this work actually aiming at? | Blocks |
+| 4 | Half-built areas: deleted, flagged off, or finished? | Blocks |
+| 5 | What access do I have, and can I verify the result myself? | Blocks |
+| 6 | Section-by-section approval of the design | Blocks |
+| 7 | Automatic updates, unless you say otherwise | Automatic |
 
 Silence on question 1 runs all seven audit lanes. Over-cover, never under-cover: a lane skipped by
 silence is exactly the gap that later reads as clean. The ledger names which lanes ran and which
