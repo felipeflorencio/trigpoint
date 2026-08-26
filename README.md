@@ -186,9 +186,6 @@ tracks**.
 
 ## Limits
 
-- **The audit costs real tokens.** It is the expensive part of a run, deliberately, because a
-  plan built from a README is a plan built from a claim. Expect a meaningful bill on a large
-  repository.
 - **It does not replace static analysis.** It establishes ground truth for planning. It is not a
   linter and it is not a type checker; run those too.
 - **It is version 0.1.0.** The ledger and the drift gate are covered by 129 tests. The plan it
