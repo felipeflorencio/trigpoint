@@ -23,9 +23,9 @@ Generated. Do not hand-edit anything between the markers. Run `python3 scripts/b
 | **T2 Generation** | The generated progress table, the dashboard renderer, and the sync CLI that writes both | 4 | 4 | T1 |
 | **T3 Installation** | The CLAUDE.md instruction block installer | 3 | 3 | T1 |
 | **T4 Packaging** | The plugin and marketplace manifests, the slash commands, and the skill with its references and templates | 4 | 4 | T1, T2, T3 |
-| **T5 Publication** | The README, the cover art, the published marketplace listing, and a verified real install | 2 | 0 | T4 |
+| **T5 Publication** | The README, the cover art, the published marketplace listing, and a verified real install | 2 | 2 | T4 |
 | **T6 Continuous verification** | The hooks that state the plan at session start and re-prove it at the end of a turn, the approval gate that keeps command execution safe, and the parser fix that made the re-run trustworthy | 8 | 6 | nothing |
-| **Total** | | 27 | 23 | |
+| **Total** | | 27 | 25 | |
 <!-- trigpoint:progress:end -->
 
 T1 is the only true blocker: nothing downstream works without a parser and a gate that trusts
@@ -180,12 +180,16 @@ manifests and commands are what let a user install any of it.
 **Scope:** The README, the cover art, the published marketplace listing, and a verified real install
 **Blocked by:** T4
 
-This track has not started. Nobody has published this plugin anywhere, and nobody has installed
-it from outside this checkout.
+Published and installed. What remains unproven is reach beyond Claude Code, which is 6.8.
 
-- [ ] **5.1** Write the README and the cover art
-- [ ] **5.2** Publish the plugin to a marketplace and verify a real install from outside this
-      checkout
+- [x] **5.1** Write the README and the cover art
+      **Verified:** `test -f README.md && test -f assets/cover.png` -> `exit 0`. 2026-08-27
+- [x] **5.2** Publish the plugin to a marketplace and verify a real install from outside this
+      checkout. The shared marketplace `felipeflorencio/claude-plugins` lists this plugin, and
+      it installs and updates from there: `claude plugin update trigpoint` reported
+      `Plugin "trigpoint" updated from 0.1.0 to 0.2.0 for scope user`, and
+      `claude plugin details trigpoint` then reported `Hooks (2) SessionStart, Stop`
+      **Verified:** `curl -sfo /dev/null -w '%{http_code}' https://raw.githubusercontent.com/felipeflorencio/claude-plugins/main/.claude-plugin/marketplace.json` -> `200`. 2026-08-27
 
 ## T6 Continuous verification
 

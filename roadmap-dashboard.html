@@ -47,7 +47,7 @@ footer { color: var(--muted); font-size: .82rem; border-top: 1px solid var(--rul
 </style>
 </head><body><div class="wrap">
 <p class="headline">This repository now runs its own drift gate in CI, so a ledger that lies about its own evidence fails its own build before it fails anyone else&#x27;s.</p>
-<p class="meta">23 of 27 tasks complete across 6 tracks.</p>
+<p class="meta">25 of 27 tasks complete across 6 tracks.</p>
 <section class="track">
 <h2>T1 Parser and gate</h2>
 <p class="meta">The ledger model, its validation rules, and the read-only CI gate built on them &middot; blocked by nothing &middot; 6 / 6</p>
@@ -125,12 +125,14 @@ footer { color: var(--muted); font-size: .82rem; border-top: 1px solid var(--rul
 </ul></section>
 <section class="track">
 <h2>T5 Publication</h2>
-<p class="meta">The README, the cover art, the published marketplace listing, and a verified real install &middot; blocked by T4 &middot; 0 / 2</p>
-<div class="bar"><span style="width:0%"></span></div>
+<p class="meta">The README, the cover art, the published marketplace listing, and a verified real install &middot; blocked by T4 &middot; 2 / 2</p>
+<div class="bar"><span style="width:100%"></span></div>
 <ul class="tasks">
-<li><span class="state">-</span><span class="task-id">5.1</span>Write the README and the cover art
+<li><span class="state done">x</span><span class="task-id">5.1</span>Write the README and the cover art
+<span class="evidence">`test -f README.md &amp;&amp; test -f assets/cover.png` -&gt; `exit 0`. 2026-08-27</span>
 </li>
-<li><span class="state">-</span><span class="task-id">5.2</span>Publish the plugin to a marketplace and verify a real install from outside this
+<li><span class="state done">x</span><span class="task-id">5.2</span>Publish the plugin to a marketplace and verify a real install from outside this
+<span class="evidence">`curl -sfo /dev/null -w &#x27;%{http_code}&#x27; https://raw.githubusercontent.com/felipeflorencio/claude-plugins/main/.claude-plugin/marketplace.json` -&gt; `200`. 2026-08-27</span>
 </li>
 </ul></section>
 <section class="track">
