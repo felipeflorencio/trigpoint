@@ -1,8 +1,14 @@
 #!/usr/bin/env python3
 """Read a Trigpoint ledger and report problems without writing anything.
 
-Exit codes: 0 clean or warnings only, 1 at least one error, 2 ledger unreadable.
+Exit codes: 0 clean or warnings only, 1 at least one error, 2 ledger unreadable,
+3 nothing was checked because the parser claimed no tasks in this file.
 Suitable as a CI gate.
+
+Exit 3 exists because "no problems found" and "I read nothing" were once the
+same output. A gate whose success is indistinguishable from a gate that is not
+running protects nobody, and the common way to reach that state is not a broken
+parser but a ROADMAP.md that has never been converted.
 """
 
 from __future__ import annotations
@@ -13,9 +19,16 @@ from typing import List
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
-from trigpoint_ledger import Problem, has_errors, parse_ledger, validate
+from trigpoint_ledger import (
+    Problem,
+    count_checkbox_lines,
+    has_errors,
+    parse_ledger,
+    validate,
+)
 
 DEFAULT_LEDGER = "ROADMAP.md"
+NOTHING_CHECKED = 3
 
 
 def report(problems: List[Problem], ledger_path: str) -> str:
@@ -41,6 +54,36 @@ def report(problems: List[Problem], ledger_path: str) -> str:
     return "\n".join(lines)
 
 
+def describe_coverage(ledger, checkbox_lines: int, ledger_path: str) -> str:
+    """State what was actually read, so a pass is never a bare assertion."""
+    ticked = [task for track in ledger.tracks for task in track.tasks if task.done]
+    return (
+        "{0}: {1} task(s) in {2} track(s); {3} ticked, {4} carrying evidence; "
+        "{5} checkbox line(s) seen.".format(
+            ledger_path,
+            ledger.task_count,
+            len(ledger.tracks),
+            len(ticked),
+            sum(1 for task in ticked if task.evidence),
+            checkbox_lines,
+        )
+    )
+
+
+def nothing_checked_message(checkbox_lines: int, ledger_path: str) -> str:
+    seen = (
+        ""
+        if not checkbox_lines
+        else " although {0} checkbox line(s) are present".format(checkbox_lines)
+    )
+    return (
+        "{0}: no tasks parsed{1}. Either this file is not a Trigpoint ledger, or the "
+        "parser has stopped recognising it. A section becomes a track by carrying a "
+        "**Scope:** line, and a task line reads `- [ ] **1.1** text`. NOTHING WAS "
+        "CHECKED; this is not a pass.".format(ledger_path, seen)
+    )
+
+
 def main(argv: List[str]) -> int:
     ledger_path = argv[0] if argv else DEFAULT_LEDGER
     path = pathlib.Path(ledger_path)
@@ -52,7 +95,13 @@ def main(argv: List[str]) -> int:
     except (OSError, UnicodeDecodeError) as exception:
         sys.stderr.write("cannot read ledger: {0} ({1})\n".format(ledger_path, exception))
         return 2
-    problems = validate(parse_ledger(text))
+    ledger = parse_ledger(text)
+    checkbox_lines = count_checkbox_lines(text)
+    sys.stdout.write(describe_coverage(ledger, checkbox_lines, ledger_path) + "\n")
+    if ledger.task_count == 0:
+        sys.stderr.write(nothing_checked_message(checkbox_lines, ledger_path) + "\n")
+        return NOTHING_CHECKED
+    problems = validate(ledger)
     sys.stdout.write(report(problems, ledger_path) + "\n")
     return 1 if has_errors(problems) else 0
 

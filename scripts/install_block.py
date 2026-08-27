@@ -31,6 +31,9 @@ BLOCK_BODY = """## The ledger
 - A finding that contradicts the ledger is raised, not quietly edited away.
 - After any tick or addition, run `python3 .trigpoint/build_dashboard.py`.
   The progress table and the dashboard are generated. Never hand-edit them.
+- Evidence is a `**Verified:**` line naming a command, which is re-run and can
+  untick its box, or a `**Recorded:**` line stating what happened, for work no
+  command can re-check. Never invent a command to satisfy the gate.
 - `python3 .trigpoint/check_drift.py` exits non-zero when a box is ticked with
   no evidence recorded.
 

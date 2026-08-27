@@ -17,7 +17,13 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from _project import ledger_path  # noqa: E402
 
-from trigpoint_ledger import parse_ledger, validate  # noqa: E402
+from trigpoint_ledger import (  # noqa: E402
+    RECORDED,
+    VERIFIED,
+    count_checkbox_lines,
+    parse_ledger,
+    validate,
+)
 from trigpoint_render import heading_text  # noqa: E402
 from trigpoint_verify import recorded_command  # noqa: E402
 
@@ -33,19 +39,36 @@ def build_state(markdown_text: str) -> str:
     total = ledger.task_count
     done = ledger.done_count
 
+    if total == 0:
+        checkbox_lines = count_checkbox_lines(markdown_text)
+        seen = (
+            ""
+            if not checkbox_lines
+            else " although {0} checkbox line(s) are present".format(checkbox_lines)
+        )
+        return (
+            "TRIGPOINT LEDGER. WARNING: ROADMAP.md parsed as ZERO tasks{0}. The drift "
+            "gate is not protecting this repository until that is fixed, and a clean "
+            "report from it currently means nothing was read rather than nothing was "
+            "wrong. A section becomes a track by carrying a **Scope:** line, and a task "
+            "line reads `- [ ] **1.1** text`.".format(seen)
+        )
+
+    ticked = [task for track in ledger.tracks for task in track.tasks if task.done]
     proven = sum(
         1
-        for track in ledger.tracks
-        for task in track.tasks
-        if task.done and recorded_command(task.evidence)
+        for task in ticked
+        if task.evidence_kind == VERIFIED and recorded_command(task.evidence)
     )
-    attested = done - proven
+    recorded = sum(1 for task in ticked if task.evidence_kind == RECORDED)
+    attested = done - proven - recorded
 
     lines = [
         "TRIGPOINT LEDGER. This repository keeps its plan of record in ROADMAP.md. "
         "Read it before starting work, and keep it current as you go.",
         "State: {0} of {1} tasks done - {2} carrying a re-runnable command, "
-        "{3} resting on a written note only.".format(done, total, proven, attested),
+        "{3} recording something that happened, {4} resting on a written note "
+        "only.".format(done, total, proven, recorded, attested),
     ]
 
     open_tracks = _open_tracks(ledger)
@@ -87,10 +110,15 @@ def build_state(markdown_text: str) -> str:
 
     lines.append("")
     lines.append(
-        "Ticking rule: a box is ticked only with a **Verified:** line carrying the command "
-        "that was run and what it printed. Never on assumption. Commands recorded that way "
-        "are re-run automatically at the end of a working turn, and a box whose command "
-        "stops passing is unticked again, so an optimistic tick does not survive."
+        "Ticking rule: a box is ticked only with evidence. Never on assumption. Use a "
+        "**Verified:** line carrying the command that was run when the work can be "
+        "re-checked by running something; those commands are re-run at the end of a "
+        "working turn and a box whose command stops passing is unticked again, so an "
+        "optimistic tick does not survive. Use a **Recorded:** line stating what happened "
+        "and when for work no command can re-check, such as a release published or a "
+        "migration run; it is never re-run and never unticked by machine. Do not invent a "
+        "command to satisfy the gate: a proxy that passes whatever the truth is, is worse "
+        "than an honest record."
     )
     return "\n".join(lines)
 

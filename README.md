@@ -100,17 +100,24 @@ Three linked artefacts. The examples below are not mock-ups: they are this repos
 
 **1. The ledger,** `ROADMAP.md` at the repository root. Tracks, dependencies, every task as a
 checkbox, the hand-off contracts, and a falsifiable definition of done. A ticked task carries the
-command that was run and what it printed:
+command that was run and the date it was proven, or, for work no command can re-check, a record of
+what happened:
 
 ```markdown
 - [x] **1.2** Write ledger validation: a ticked task with no `**Verified:**` line is an error, a
       duplicate task id is an error, an unknown `**Blocked by:**` reference is a warning
-      **Verified:** `python3 -m unittest tests.test_ledger_validate -v` -> `Ran 18 tests in
-      0.001s` / `OK`. 2026-08-26
+      **Verified:** `python3 -m unittest tests.test_ledger_validate -v`. 2026-08-26
 
-- [ ] **5.2** Publish the plugin to a marketplace and verify a real install from outside this
+- [x] **5.2** Publish the plugin to a marketplace and verify a real install from outside this
       checkout
+      **Recorded:** Published to `felipeflorencio/claude-plugins`; `claude plugin update
+      trigpoint` reported 0.1.0 to 0.2.0 on a machine outside this checkout. 2026-08-27
 ```
+
+`**Verified:**` names a command, is re-run at the end of every working turn, and unticks its box
+when the command stops passing. `**Recorded:**` names something that happened, and is never re-run
+or unticked by machine. The second exists so that nobody has to invent a command for work that has
+none: a proxy that passes whether or not the claim is true is worse than an honest record.
 
 **2. The progress table,** generated in place inside that same ledger, between a pair of markers.
 Nobody types these numbers. This is the current table from this repository, verbatim:
@@ -255,10 +262,23 @@ whose evidence is still an unfilled template:
 
 ```
 $ python3 .trigpoint/check_drift.py ROADMAP.md; echo "exit code: $?"
-ERROR  ROADMAP.md:8  task 1.1 is ticked with no **Verified:** line. Record the command that was run and what it printed, or untick it.
-ERROR  ROADMAP.md:9  task 1.2 is ticked but its **Verified:** line still contains an unfilled {{ placeholder }}. Record the command that was actually run and what it printed, or untick it.
+ROADMAP.md: 2 task(s) in 1 track(s); 2 ticked, 1 carrying evidence; 2 checkbox line(s) seen.
+ERROR  ROADMAP.md:8  task 1.1 is ticked with nothing behind it. Add a **Verified:** line naming the command that was run, or a **Recorded:** line stating what happened and when, or untick it.
+ERROR  ROADMAP.md:9  task 1.2 is ticked but its evidence line still contains an unfilled {{ placeholder }}. Record the command that was actually run, or what actually happened, or untick it.
 2 error(s), 0 warning(s) in ROADMAP.md
 exit code: 1
+```
+
+**The gate states what it read, and refuses to pass a file it read nothing from.** Exit codes are
+`0` clean, `1` at least one error, `2` unreadable, and `3` nothing was checked. Exit 3 is the one
+worth knowing about: point the gate at a ROADMAP.md that has never been converted and you get a
+diagnostic rather than a green tick.
+
+```
+$ python3 .trigpoint/check_drift.py PLANS.md; echo "exit code: $?"
+PLANS.md: 0 task(s) in 0 track(s); 0 ticked, 0 carrying evidence; 33 checkbox line(s) seen.
+PLANS.md: no tasks parsed although 33 checkbox line(s) are present. Either this file is not a Trigpoint ledger, or the parser has stopped recognising it. A section becomes a track by carrying a **Scope:** line, and a task line reads `- [ ] **1.1** text`. NOTHING WAS CHECKED; this is not a pass.
+exit code: 3
 ```
 
 ---

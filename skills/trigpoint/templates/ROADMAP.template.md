@@ -105,12 +105,22 @@ on the task line itself or indented beneath it:
 
 ```markdown
 - [x] **1.3** Set `ddl-auto=validate` in the dev profile
-      **Verified:** `./gradlew bootRun` -> started, validation passed. 2026-08-27
+      **Verified:** `./gradlew bootRun`. 2026-08-27
 
-- [x] **0.4** Delete stale `bin/`   **Verified:** `ls bin/` -> absent. 2026-08-27
+- [x] **0.4** Delete stale `bin/`   **Verified:** `ls bin/`. 2026-08-27
+
+- [x] **0.5** Migrate the production database to the new schema
+      **Recorded:** Ran against production at 09:12 UTC, 4,812 rows migrated, verified by
+      spot-check. 2026-08-27
 ```
 
-The `**Verified:**` text records the command that was actually run and what came back. A ticked
+The `**Verified:**` text records the command that was actually run, in backticks, and the date
+it was proven. It does not record what the command printed: nothing re-reads that, and evidence
+the tool never checks is decoration that goes stale.
+
+Work that no command can re-check uses `**Recorded:**` instead, stating what happened and when.
+It is never re-run and never unticked by machine. Use it rather than inventing a command that
+would pass whether or not the claim is true. A ticked
 task whose evidence is still an unfilled `{{ placeholder }}` fails the gate exactly as a missing
 evidence line does, so this template ships no ticked task for anyone to copy half-filled.
 

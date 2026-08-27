@@ -1,7 +1,7 @@
 {
   "name": "trigpoint",
   "displayName": "Trigpoint",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Audit a codebase, then produce a plan of record that cannot drift. Generates a ledger, a dashboard and a design spec, and keeps them true while the work is done.",
   "author": {
     "name": "Felipe Florencio"

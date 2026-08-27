@@ -26,6 +26,44 @@ METADATA_LINE = re.compile(r"^\*\*[^*]+:\*\*")
 HEADING_LINE = re.compile(r"^#")
 
 EVIDENCE_MARKER = "**Verified:**"
+RECORD_MARKER = "**Recorded:**"
+
+VERIFIED = "verified"
+RECORDED = "recorded"
+
+EVIDENCE_MARKERS = ((EVIDENCE_MARKER, VERIFIED), (RECORD_MARKER, RECORDED))
+
+# A deliberately weaker second reader, used only to answer one question the
+# grammar cannot answer about itself: how much of this document did the grammar
+# fail to claim? It is broader than TASK_LINE on purpose -- any bullet, any
+# case, no trailing text required -- so the count can never fall below what the
+# grammar claimed, and it keeps its own fence handling rather than sharing
+# `_lines_outside_fences`, because a fence bug that hides tasks from the parser
+# must not hide the same tasks from the counter as well.
+SHALLOW_CHECKBOX = re.compile(r"^\s*[-*+]\s+\[[ xX]\](\s|$)")
+
+
+def count_checkbox_lines(markdown_text: str) -> int:
+    """Every checkbox-looking line outside a fenced block."""
+    total = 0
+    open_marker = None
+    for line in markdown_text.splitlines():
+        stripped = line.strip()
+        if stripped.startswith(FENCE_MARKER):
+            marker = FENCE_MARKER
+        elif stripped.startswith(TILDE_FENCE_MARKER):
+            marker = TILDE_FENCE_MARKER
+        else:
+            marker = None
+        if marker is not None:
+            if open_marker is None:
+                open_marker = marker
+            elif marker == open_marker:
+                open_marker = None
+            continue
+        if open_marker is None and SHALLOW_CHECKBOX.match(line):
+            total += 1
+    return total
 DONE_HEADING_PREFIX = "definition of done"
 PLACEHOLDER_OPEN = "{{"
 PLACEHOLDER_CLOSE = "}}"
@@ -36,11 +74,26 @@ TILDE_FENCE_MARKER = "~~~"
 
 @dataclass
 class Task:
+    """One planned unit of work and whatever stands behind its tick.
+
+    `evidence_kind` separates the two honest ways a box earns its tick.
+    VERIFIED evidence names a command: a machine re-runs it, and a machine may
+    untick the box when it stops passing. RECORDED evidence names something
+    that happened and was witnessed -- a release published, a migration run, an
+    install performed. Re-running it is not possible, so nothing re-runs it and
+    no machine ever unticks it.
+
+    The distinction exists because demanding a command for work that has none
+    does not produce evidence, it produces a proxy that stands near the claim
+    without proving it and passes forever either way.
+    """
+
     task_id: str
     text: str
     done: bool
     evidence: Optional[str]
     line_number: int
+    evidence_kind: Optional[str] = None
 
 
 @dataclass
@@ -338,15 +391,27 @@ def _marker_outside_inline_code(text: str, marker: str) -> int:
 
 
 def _apply_evidence(task: Task, block_lines: List[str]) -> Task:
+    """Attach whichever evidence marker the task block carries, and its kind.
+
+    A block carrying both is read as VERIFIED: a command that can be re-run is
+    the stronger claim, and the record beside it loses nothing by being kept as
+    prose.
+    """
     block = "\n".join(block_lines)
-    position = _marker_outside_inline_code(block, EVIDENCE_MARKER)
-    if position != -1:
-        evidence = block[position + len(EVIDENCE_MARKER) :]
-        task.evidence = " ".join(evidence.split()) or None
+    for marker, kind in EVIDENCE_MARKERS:
+        position = _marker_outside_inline_code(block, marker)
+        if position != -1:
+            evidence = block[position + len(marker) :]
+            task.evidence = " ".join(evidence.split()) or None
+            task.evidence_kind = kind if task.evidence else None
+            break
+
     first_line = block_lines[0] if block_lines else ""
-    first_line_marker = _marker_outside_inline_code(first_line, EVIDENCE_MARKER)
-    if first_line_marker != -1:
-        first_line = first_line[:first_line_marker]
+    for marker, _ in EVIDENCE_MARKERS:
+        first_line_marker = _marker_outside_inline_code(first_line, marker)
+        if first_line_marker != -1:
+            first_line = first_line[:first_line_marker]
+            break
     task.text = " ".join(first_line.split())
     return task
 
@@ -389,9 +454,10 @@ def validate(ledger: Ledger) -> List[Problem]:
                         severity="error",
                         line_number=task.line_number,
                         message=(
-                            "task {0} is ticked with no **Verified:** line. "
-                            "Record the command that was run and what it printed, "
-                            "or untick it.".format(task.task_id)
+                            "task {0} is ticked with nothing behind it. Add a "
+                            "**Verified:** line naming the command that was "
+                            "run, or a **Recorded:** line stating what "
+                            "happened and when, or untick it.".format(task.task_id)
                         ),
                     )
                 )
@@ -401,10 +467,10 @@ def validate(ledger: Ledger) -> List[Problem]:
                         severity="error",
                         line_number=task.line_number,
                         message=(
-                            "task {0} is ticked but its **Verified:** line still "
+                            "task {0} is ticked but its evidence line still "
                             "contains an unfilled {{{{ placeholder }}}}. Record the "
-                            "command that was actually run and what it printed, "
-                            "or untick it.".format(task.task_id)
+                            "command that was actually run, or what actually "
+                            "happened, or untick it.".format(task.task_id)
                         ),
                     )
                 )

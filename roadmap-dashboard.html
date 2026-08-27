@@ -47,7 +47,7 @@ footer { color: var(--muted); font-size: .82rem; border-top: 1px solid var(--rul
 </style>
 </head><body><div class="wrap">
 <p class="headline">This repository now runs its own drift gate in CI, so a ledger that lies about its own evidence fails its own build before it fails anyone else&#x27;s.</p>
-<p class="meta">25 of 27 tasks complete across 6 tracks.</p>
+<p class="meta">29 of 31 tasks complete across 6 tracks.</p>
 <section class="track">
 <h2>T1 Parser and gate</h2>
 <p class="meta">The ledger model, its validation rules, and the read-only CI gate built on them &middot; blocked by nothing &middot; 6 / 6</p>
@@ -114,13 +114,13 @@ footer { color: var(--muted); font-size: .82rem; border-top: 1px solid var(--rul
 <span class="evidence">`python3 -m unittest tests.test_manifests.ManifestTest.test_plugin_manifest_is_valid_json_with_required_fields tests.test_manifests.ManifestTest.test_marketplace_manifest_lists_this_plugin tests.test_manifests.ManifestTest.test_every_command_file_exists_and_has_frontmatter -v` -&gt; `Ran 3 tests in 0.001s` / `OK`. 2026-08-26</span>
 </li>
 <li><span class="state done">x</span><span class="task-id">4.2</span>Write the trigpoint skill: `skills/trigpoint/SKILL.md`, its six references
-<span class="evidence">`ls skills/trigpoint/references | wc -l` -&gt; `6`. `ls skills/trigpoint/templates | wc -l` -&gt; `2`. 2026-08-26</span>
+<span class="evidence">All six references and both templates written and reviewed by eye. A file count is not verification: it confirms eight files exist and says nothing about whether any of them says the right thing. 2026-08-26</span>
 </li>
 <li><span class="state done">x</span><span class="task-id">4.3</span>Widen the shipped-markdown typography gate to cover the repository root,
 <span class="evidence">`python3 -m unittest tests.test_manifests.ManifestTest.test_no_forbidden_typography_in_shipped_markdown tests.test_manifests.ManifestTest.test_shipped_markdown_glob_covers_the_user_facing_surface -v` -&gt; `Ran 2 tests in 0.001s` / `OK`. 2026-08-26</span>
 </li>
 <li><span class="state done">x</span><span class="task-id">4.4</span>Rewrite the skill&#x27;s guidance so a user&#x27;s request to skip the audit or the
-<span class="evidence">`grep -n &quot;pressure&quot; skills/trigpoint/SKILL.md` -&gt; line 69, &quot;never quietly drop one for budget, whether the pressure comes from your own&quot;. 2026-08-26</span>
+<span class="evidence">Guidance rewritten and read back in full. Grepping for one word proves the word is present, not that the guidance says a request to skip is neither consent nor an answer. 2026-08-26</span>
 </li>
 </ul></section>
 <section class="track">
@@ -129,16 +129,16 @@ footer { color: var(--muted); font-size: .82rem; border-top: 1px solid var(--rul
 <div class="bar"><span style="width:100%"></span></div>
 <ul class="tasks">
 <li><span class="state done">x</span><span class="task-id">5.1</span>Write the README and the cover art
-<span class="evidence">`test -f README.md &amp;&amp; test -f assets/cover.png` -&gt; `exit 0`. 2026-08-27</span>
+<span class="evidence">README written and cover art produced, both reviewed by eye. Testing that two files exist says nothing about whether either is any good. 2026-08-27</span>
 </li>
 <li><span class="state done">x</span><span class="task-id">5.2</span>Publish the plugin to a marketplace and verify a real install from outside this
-<span class="evidence">`curl -sfo /dev/null -w &#x27;%{http_code}&#x27; https://raw.githubusercontent.com/felipeflorencio/claude-plugins/main/.claude-plugin/marketplace.json` -&gt; `200`. 2026-08-27</span>
+<span class="evidence">Published to the shared marketplace `felipeflorencio/claude-plugins` and installed from there on a machine outside this checkout. No command re-establishes a publication that already happened; the `curl` that stood here checked only that a JSON file still answers, which passes whether or not anything was ever published and unticks this task on any offline turn. 2026-08-27</span>
 </li>
 </ul></section>
 <section class="track">
 <h2>T6 Continuous verification</h2>
-<p class="meta">The hooks that state the plan at session start and re-prove it at the end of a turn, the approval gate that keeps command execution safe, and the parser fix that made the re-run trustworthy &middot; blocked by nothing &middot; 6 / 8</p>
-<div class="bar"><span style="width:75%"></span></div>
+<p class="meta">The hooks that state the plan at session start and re-prove it at the end of a turn, the approval gate that keeps command execution safe, and the parser fix that made the re-run trustworthy &middot; blocked by nothing &middot; 10 / 12</p>
+<div class="bar"><span style="width:83%"></span></div>
 <ul class="tasks">
 <li><span class="state done">x</span><span class="task-id">6.1</span>Write `scripts/trigpoint_verify.py`: read the command out of each ticked task&#x27;s
 <span class="evidence">`python3 -m unittest tests.test_verify -v` -&gt; `Ran 23 tests in 0.001s` / `OK`. 2026-08-26</span>
@@ -160,7 +160,19 @@ footer { color: var(--muted); font-size: .82rem; border-top: 1px solid var(--rul
 </li>
 <li><span class="state">-</span><span class="task-id">6.8</span>Verify one non-Claude harness by actually installing it. The Codex, Cursor and
 </li>
-<li><span class="state">-</span><span class="task-id">6.5</span>Prove it against a project that is not this one. The dogfood run here unticked four
+<li><span class="state done">x</span><span class="task-id">6.9</span>Make evidence honest about what it can prove: `**Verified:**` names a command and
+<span class="evidence">`python3 -m unittest tests.test_recorded_evidence -v`. 2026-08-27</span>
+</li>
+<li><span class="state done">x</span><span class="task-id">6.10</span>Never untick on a result that was never obtained: a spawn failure or a timeout is
+<span class="evidence">`python3 -m unittest tests.test_verify.CouldNotRunTests -v`. 2026-08-27</span>
+</li>
+<li><span class="state done">x</span><span class="task-id">6.11</span>Apply and write each regression as it is found. The Stop hook has a 180-second
+<span class="evidence">`python3 -m unittest tests.test_incremental_verify -v`. 2026-08-27</span>
+</li>
+<li><span class="state done">x</span><span class="task-id">6.5a</span>Make the checker fail closed and state its own coverage, so a parser that stops
+<span class="evidence">`python3 -m unittest tests.test_nothing_checked -v`. 2026-08-27</span>
+</li>
+<li><span class="state">-</span><span class="task-id">6.5b</span>Prove the grammar and the install against a project that is not this one. 6.5a
 </li>
 </ul></section>
 <section class="track"><h2>Definition of done</h2>

@@ -33,7 +33,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Callable, Dict, List, Optional, Tuple
 
-from trigpoint_ledger import TASK_LINE, Ledger, Task, parse_ledger
+from trigpoint_ledger import TASK_LINE, VERIFIED, Ledger, Task, parse_ledger
 
 TAIL_LIMIT = 240
 DEFAULT_TIMEOUT = 120
@@ -45,12 +45,33 @@ REGRESSED_MARKER = "**Regressed:**"
 
 BACKTICKED = re.compile(r"`([^`]+)`")
 
+PASSED = "passed"
+FAILED = "failed"
+COULD_NOT_RUN = "could-not-run"
+
 
 @dataclass
 class Outcome:
+    """What re-running one recorded command established.
+
+    An exit code answers two different questions at once and the ledger only
+    cares about one of them. `FAILED` means the command ran and contradicted
+    the claim. `COULD_NOT_RUN` means Trigpoint never got an answer -- it could
+    not start the command, or gave up waiting -- which is not evidence about
+    the claim and must never untick anything. The tool only ever unticks, so a
+    wrong untick corrupts the plan of record while a missed one merely delays
+    a catch; everything ambiguous therefore resolves to leaving the box alone
+    and saying so out loud.
+    """
+
     exit_code: int
     tail: str
     at: str
+    status: str = ""
+
+    def __post_init__(self) -> None:
+        if not self.status:
+            self.status = PASSED if self.exit_code == 0 else FAILED
 
 
 def today() -> str:
@@ -63,9 +84,12 @@ def today() -> str:
 def recorded_command(evidence: Optional[str]) -> Optional[str]:
     """The command an evidence line records, which is its first backticked span.
 
-    The convention every Trigpoint evidence line already follows is
-    `command` -> `output`. The first span is therefore what was run and the
-    later spans are what it printed.
+    Evidence records the command and the date it was proven, and nothing else.
+    Recorded output was never checked -- verification consults the exit code
+    only -- so printing it put a number in the ledger that nothing stood
+    behind. Ledgers written before that rule still carry a `command` ->
+    `output` tail; taking the FIRST span reads both forms correctly, so older
+    ledgers keep working untouched.
     """
     if not evidence:
         return None
@@ -77,15 +101,20 @@ def recorded_command(evidence: Optional[str]) -> Optional[str]:
 
 
 def selectable(ledger: Ledger) -> List[Tuple[Task, str]]:
-    """Ticked tasks whose evidence records a command, paired with that command.
+    """Ticked tasks whose evidence ASSERTS something, paired with the command.
 
     Unticked tasks are never re-run. There is nothing to contradict yet, and
     running a command for work that has not started produces noise, not news.
+
+    `**Recorded:**` evidence is skipped whatever it contains. It states that
+    something happened, which no re-run can confirm or deny, and its backticks
+    quote names rather than commands -- running them would be running text the
+    author never meant as an instruction.
     """
     selected: List[Tuple[Task, str]] = []
     for track in ledger.tracks:
         for task in track.tasks:
-            if not task.done:
+            if not task.done or task.evidence_kind != VERIFIED:
                 continue
             command = recorded_command(task.evidence)
             if command:
@@ -161,12 +190,13 @@ def run_command(command: str, cwd: str, timeout: int = DEFAULT_TIMEOUT,
             text=True, timeout=timeout,
         )
     except subprocess.TimeoutExpired:
-        return Outcome(124, "timed out after {0}s".format(timeout), today())
+        return Outcome(124, "timed out after {0}s".format(timeout), today(), COULD_NOT_RUN)
     except OSError as error:
-        return Outcome(127, _tail(str(error)), today())
+        return Outcome(127, _tail(str(error)), today(), COULD_NOT_RUN)
 
     output = (getattr(completed, "stdout", "") or "") + (getattr(completed, "stderr", "") or "")
-    return Outcome(completed.returncode, _tail(output), today())
+    status = PASSED if completed.returncode == 0 else FAILED
+    return Outcome(completed.returncode, _tail(output), today(), status)
 
 
 # ------------------------------------------------------------------ writing
@@ -214,8 +244,15 @@ def apply_regressions(markdown_text: str, outcomes: Dict[str, Outcome]) -> Tuple
         if task_id not in known:
             failed.append("{0} not found as a ticked task carrying a command".format(task_id))
             continue
-        if outcome.exit_code == 0:
+        if outcome.status == PASSED:
             applied.append("{0} still passing".format(task_id))
+            continue
+        if outcome.status == COULD_NOT_RUN:
+            failed.append(
+                "{0} could not be run, so it was left alone: {1}".format(
+                    task_id, outcome.tail or "no reason given"
+                )
+            )
             continue
 
         task, command = known[task_id]
@@ -264,28 +301,46 @@ def verify_ledger(ledger_path: str, runner: Callable = subprocess.run,
 
     Returns (report, awaiting_approval). Writes the ledger only when something
     actually changed, and never commits.
+
+    Each outcome is applied and written as soon as it is produced, rather than
+    collected and written once at the end. The Stop hook that calls this has a
+    180-second budget; a pass that ran past it used to be killed with every
+    regression it had already found still in memory, writing nothing and
+    printing nothing. Silence at the end of a turn reads as a clean ledger, so
+    that was the one path on which this tool reported a plan as fine while
+    holding proof that it was not. Writing as it goes means an interrupted pass
+    keeps everything it established and only leaves the remainder unchecked.
+
+    A command standing behind several tasks runs once, and its outcome is
+    applied to all of them. Within one pass, over one tree, running the same
+    command twice cannot produce two answers worth having.
     """
     repository_root = os.path.dirname(os.path.abspath(ledger_path))
     with open(ledger_path, encoding="utf-8") as handle:
         original = handle.read()
 
     approvals = load_approvals(repository_root)
-    outcomes: Dict[str, Outcome] = {}
     awaiting: List[str] = []
+    tasks_by_command: Dict[str, List[str]] = {}
 
     for task, command in selectable(parse_ledger(original)):
         if not is_approved(command, approvals):
             awaiting.append("{0}: {1}".format(task.task_id, command))
             continue
-        outcomes[task.task_id] = run_command(command, repository_root, timeout, runner)
+        tasks_by_command.setdefault(command, []).append(task.task_id)
 
-    if not outcomes:
-        return [], awaiting
+    report: List[str] = []
+    for command, task_ids in tasks_by_command.items():
+        outcome = run_command(command, repository_root, timeout, runner)
+        with open(ledger_path, encoding="utf-8") as handle:
+            current = handle.read()
+        outcomes: Dict[str, Outcome] = {task_id: outcome for task_id in task_ids}
+        updated, applied = apply_regressions(current, outcomes)
+        if updated != current:
+            with open(ledger_path, "w", encoding="utf-8") as handle:
+                handle.write(updated)
+        report.extend(applied)
 
-    updated, report = apply_regressions(original, outcomes)
-    if updated != original:
-        with open(ledger_path, "w", encoding="utf-8") as handle:
-            handle.write(updated)
     return report, awaiting
 
 

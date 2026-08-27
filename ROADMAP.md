@@ -24,8 +24,8 @@ Generated. Do not hand-edit anything between the markers. Run `python3 scripts/b
 | **T3 Installation** | The CLAUDE.md instruction block installer | 3 | 3 | T1 |
 | **T4 Packaging** | The plugin and marketplace manifests, the slash commands, and the skill with its references and templates | 4 | 4 | T1, T2, T3 |
 | **T5 Publication** | The README, the cover art, the published marketplace listing, and a verified real install | 2 | 2 | T4 |
-| **T6 Continuous verification** | The hooks that state the plan at session start and re-prove it at the end of a turn, the approval gate that keeps command execution safe, and the parser fix that made the re-run trustworthy | 8 | 6 | nothing |
-| **Total** | | 27 | 25 | |
+| **T6 Continuous verification** | The hooks that state the plan at session start and re-prove it at the end of a turn, the approval gate that keeps command execution safe, and the parser fix that made the re-run trustworthy | 12 | 10 | nothing |
+| **Total** | | 31 | 29 | |
 <!-- trigpoint:progress:end -->
 
 T1 is the only true blocker: nothing downstream works without a parser and a gate that trusts
@@ -160,8 +160,9 @@ manifests and commands are what let a user install any of it.
       (`agent-brief-skeleton.md`, `audit-lanes.md`, `dashboard-design.md`, `evidence-rules.md`,
       `ledger-format.md`, `question-ladder.md`) and its two templates
       (`ROADMAP.template.md`, `spec.template.md`)
-      **Verified:** `ls skills/trigpoint/references | wc -l` -> `6`. `ls skills/trigpoint/templates
-      | wc -l` -> `2`. 2026-08-26
+      **Recorded:** All six references and both templates written and reviewed by eye. A
+      file count is not verification: it confirms eight files exist and says nothing about
+      whether any of them says the right thing. 2026-08-26
 - [x] **4.3** Widen the shipped-markdown typography gate to cover the repository root,
       `commands/`, `skills/` and `examples/`, excluding the reference ledger fixture, which is a
       verbatim third-party copy
@@ -172,8 +173,9 @@ manifests and commands are what let a user install any of it.
 - [x] **4.4** Rewrite the skill's guidance so a user's request to skip the audit or the
       four questions is stated as neither consent nor an answer, under direct pressure to move
       faster
-      **Verified:** `grep -n "pressure" skills/trigpoint/SKILL.md` -> line 69, "never quietly
-      drop one for budget, whether the pressure comes from your own". 2026-08-26
+      **Recorded:** Guidance rewritten and read back in full. Grepping for one word proves
+      the word is present, not that the guidance says a request to skip is neither consent nor
+      an answer. 2026-08-26
 
 ## T5 Publication
 
@@ -183,13 +185,18 @@ manifests and commands are what let a user install any of it.
 Published and installed. What remains unproven is reach beyond Claude Code, which is 6.8.
 
 - [x] **5.1** Write the README and the cover art
-      **Verified:** `test -f README.md && test -f assets/cover.png` -> `exit 0`. 2026-08-27
+      **Recorded:** README written and cover art produced, both reviewed by eye. Testing
+      that two files exist says nothing about whether either is any good. 2026-08-27
 - [x] **5.2** Publish the plugin to a marketplace and verify a real install from outside this
       checkout. The shared marketplace `felipeflorencio/claude-plugins` lists this plugin, and
       it installs and updates from there: `claude plugin update trigpoint` reported
       `Plugin "trigpoint" updated from 0.1.0 to 0.2.0 for scope user`, and
       `claude plugin details trigpoint` then reported `Hooks (2) SessionStart, Stop`
-      **Verified:** `curl -sfo /dev/null -w '%{http_code}' https://raw.githubusercontent.com/felipeflorencio/claude-plugins/main/.claude-plugin/marketplace.json` -> `200`. 2026-08-27
+      **Recorded:** Published to the shared marketplace `felipeflorencio/claude-plugins` and
+      installed from there on a machine outside this checkout. No command re-establishes a
+      publication that already happened; the `curl` that stood here checked only that a JSON
+      file still answers, which passes whether or not anything was ever published and unticks
+      this task on any offline turn. 2026-08-27
 
 ## T6 Continuous verification
 
@@ -240,10 +247,36 @@ stays with a person.
 - [ ] **6.8** Verify one non-Claude harness by actually installing it. The Codex, Cursor and
       Gemini manifests are built to each published shape but none has been installed, so they are
       a claim rather than a fact until one is
-- [ ] **6.5** Prove it against a project that is not this one. The dogfood run here unticked four
-      tasks correctly when the renderer was broken, but it also showed that a repository managing
-      ITSELF shares one parser between the checker and the checked, so sabotaging the parser
-      silently disables the checker. That blind spot needs a real second project to characterise
+- [x] **6.9** Make evidence honest about what it can prove: `**Verified:**` names a command and
+      is re-run, `**Recorded:**` names something that happened and is never re-run. The gate
+      demanded a command for every tick, so work with no command got a proxy instead: task 5.2
+      was a `curl` that showed a JSON file still answers, which passes whether or not anything
+      was ever published and unticked the task on any offline turn. Manufactured evidence is the
+      failure this tool exists to prevent, and the gate was manufacturing it
+      **Verified:** `python3 -m unittest tests.test_recorded_evidence -v`. 2026-08-27
+- [x] **6.10** Never untick on a result that was never obtained: a spawn failure or a timeout is
+      COULD_NOT_RUN, not a regression. The tool only ever unticks, so a wrong untick corrupts the
+      plan of record while a missed one merely delays a catch
+      **Verified:** `python3 -m unittest tests.test_verify.CouldNotRunTests -v`. 2026-08-27
+- [x] **6.11** Apply and write each regression as it is found. The Stop hook has a 180-second
+      budget; a pass that ran past it was killed with every regression it had already detected
+      still in memory, writing and printing nothing. Silence at the end of a turn reads as a
+      clean ledger, so that was the one path where the tool reported a plan as fine while
+      holding proof that it was not
+      **Verified:** `python3 -m unittest tests.test_incremental_verify -v`. 2026-08-27
+- [x] **6.5a** Make the checker fail closed and state its own coverage, so a parser that stops
+      recognising a ledger cannot print green. `check_drift.py` reported `no problems found` and
+      exit 0 for any file it parsed as zero tasks, which is what every user gets on day one when
+      they point the gate at a ROADMAP they have not converted. It now exits 3 and names the
+      checkbox lines it could see, and both hooks say so rather than staying quiet
+      **Verified:** `python3 -m unittest tests.test_nothing_checked -v`. 2026-08-27
+- [ ] **6.5b** Prove the grammar and the install against a project that is not this one. 6.5a
+      closes the half where a silently disabled checker still printed green, in any repository.
+      What remains cannot be measured from in here: whether the grammar fits ledgers written by
+      people who did not write the parser, and whether the machinery around it survives a
+      different layout. One concrete example waiting there: `verify_ledger` runs every recorded
+      command from the ledger's own directory, which is correct only because `ROADMAP.md` sits at
+      this repository's root
 
 ---
 
