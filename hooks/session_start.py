@@ -69,9 +69,11 @@ def vendored_version_warning(start_directory: str) -> str:
     return (
         "TRIGPOINT WARNING: the scripts vendored in .trigpoint/ are from {0}, and this "
         "plugin is {1}. The gate you are told to run is the vendored copy, so it may "
-        "reject evidence these hooks tell you to write. Re-copy the five scripts from "
-        "the plugin into .trigpoint/, or re-run the trigpoint skill.".format(
-            vendored or "an unrecorded version", running
+        "reject evidence these hooks tell you to write. Re-run the trigpoint skill, or "
+        "re-copy the five scripts into .trigpoint/ AND write the new version into "
+        ".trigpoint/{2} -- copying the scripts alone leaves this warning in place, "
+        "because nothing else records which version they came from.".format(
+            vendored or "an unrecorded version", running, VERSION_FILE
         )
     )
 

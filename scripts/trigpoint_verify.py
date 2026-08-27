@@ -36,7 +36,6 @@ from typing import Callable, Dict, List, Optional, Tuple
 
 from trigpoint_ledger import (
     REGRESSED_MARKER,
-    TASK_LINE,
     VERIFIED,
     Ledger,
     Task,
@@ -441,6 +440,16 @@ def main(argv: List[str]) -> int:
     if not os.path.exists(ledger):
         sys.stderr.write("no ledger at {0}\n".format(ledger))
         return 2
+
+    if paused(project_root_for(ledger)):
+        # `paused()` sat here unused. The hooks consult their own guard, so a
+        # paused project was silent there, while this CLI -- what
+        # /trigpoint-verify runs -- would still untick tasks and rewrite the
+        # ledger of a project whose owner had asked it to stop. Refusing out
+        # loud, because a command that appears to do nothing is its own bug.
+        print("paused: .trigpoint/paused exists, so nothing was re-run. "
+              "Remove that file to resume.")
+        return 0
 
     report, awaiting = verify_ledger(ledger)
     for line in report:

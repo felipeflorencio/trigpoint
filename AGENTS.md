@@ -27,7 +27,8 @@ ladder, the evidence rules, and the ledger format.
 
 The commands are `/trigpoint` to build a plan, `/trigpoint-sync` to regenerate the table and the
 dashboard, `/trigpoint-verify` to re-prove the ledger and approve commands, and
-`/trigpoint-pause` to stop the hooks in a repository.
+`/trigpoint-pause` to stop Trigpoint acting in a repository: the hooks fall silent and
+`/trigpoint-verify` refuses to run, so nothing edits the ledger.
 
 ## Requirements
 

@@ -12,6 +12,8 @@ This is not a speed problem. Sub-second commands here hide it; `npm test`
 across sixty tasks in someone else's repository does not.
 """
 
+import contextlib
+import io
 import os
 import pathlib
 import shutil
@@ -257,6 +259,45 @@ class TheWritePreservesWhatItFoundTests(unittest.TestCase):
         with open(self.ledger.path, "r", encoding="utf-8", newline="") as handle:
             after = handle.read()
         self.assertGreater(after.count("\r\n"), 0, "CRLF endings were rewritten as LF")
+
+
+class PausedProjectTests(unittest.TestCase):
+    """`/trigpoint-pause` must stop the thing that WRITES, not only the hooks.
+
+    `paused()` sat in this module unused. The hooks consult their own guard, so
+    a paused project was silent there, but `python3 .trigpoint/trigpoint_verify.py`
+    -- what `/trigpoint-verify` runs -- checked nothing and would happily untick
+    tasks and rewrite the ledger of a project whose owner had explicitly asked
+    it to stop. Somebody who pauses because the verifier is misbehaving does not
+    expect the manual command to keep editing their plan of record.
+
+    It refuses out loud rather than silently, because a command that appears to
+    do nothing is its own bug.
+    """
+
+    def setUp(self):
+        self.ledger = LedgerOnDisk(TWO_FAILING)
+        self.addCleanup(self.ledger.cleanup)
+        open(os.path.join(self.ledger.directory, ".trigpoint", "paused"), "w").close()
+
+    def test_a_paused_project_is_not_verified(self):
+        before = self.ledger.read()
+        verify.main(["trigpoint_verify.py", self.ledger.path])
+        self.assertEqual(self.ledger.read(), before)
+
+    def test_it_says_so_rather_than_doing_nothing_quietly(self):
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            verify.main(["trigpoint_verify.py", self.ledger.path])
+        self.assertIn("paused", out.getvalue().lower())
+
+    def test_it_exits_zero_because_pausing_is_not_an_error(self):
+        self.assertEqual(verify.main(["trigpoint_verify.py", self.ledger.path]), 0)
+
+    def test_an_unpaused_project_is_still_verified(self):
+        os.unlink(os.path.join(self.ledger.directory, ".trigpoint", "paused"))
+        verify.main(["trigpoint_verify.py", self.ledger.path])
+        self.assertIn("- [ ] **1.1**", self.ledger.read())
 
 
 if __name__ == "__main__":

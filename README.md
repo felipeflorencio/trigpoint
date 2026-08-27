@@ -209,7 +209,7 @@ before, just without the ledger state and the re-run. The technique is borrowed 
 | `/trigpoint` | Runs the whole thing from the beginning: light pass, audit, premise check, the question ladder, design sections, then emits the three artefacts. Any argument is your stated goal for the work. |
 | `/trigpoint-sync` | Regenerates the progress table and the dashboard from the ledger. Reports what applied and what did not, separately and verbatim. |
 | `/trigpoint-verify` | Re-runs the commands recorded in `**Verified:**` lines and unticks anything that stopped passing. Each distinct command is approved once before it will ever run. |
-| `/trigpoint-pause` | Stops the hooks in this repository until you undo it with `rm .trigpoint/paused`. |
+| `/trigpoint-pause` | Stops Trigpoint acting in this repository: both hooks fall silent and `/trigpoint-verify` refuses to re-run anything, so nothing edits the ledger until you undo it with `rm .trigpoint/paused`. |
 
 A whole run has **seven interaction touchpoints**, and after the last one the skill never asks
 again on that project. "Blocks" means it stops and waits, because only you hold that fact and

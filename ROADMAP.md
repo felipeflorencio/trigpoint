@@ -24,8 +24,8 @@ Generated. Do not hand-edit anything between the markers. Run `python3 scripts/b
 | **T3 Installation** | The CLAUDE.md instruction block installer | 3 | 3 | T1 |
 | **T4 Packaging** | The plugin and marketplace manifests, the slash commands, and the skill with its references and templates | 4 | 4 | T1, T2, T3 |
 | **T5 Publication** | The README, the cover art, the published marketplace listing, and a verified real install | 2 | 2 | T4 |
-| **T6 Continuous verification** | The hooks that state the plan at session start and re-prove it at the end of a turn, the approval gate that keeps command execution safe, and the parser fix that made the re-run trustworthy | 16 | 14 | nothing |
-| **Total** | | 35 | 33 | |
+| **T6 Continuous verification** | The hooks that state the plan at session start and re-prove it at the end of a turn, the approval gate that keeps command execution safe, and the parser fix that made the re-run trustworthy | 17 | 15 | nothing |
+| **Total** | | 36 | 34 | |
 <!-- trigpoint:progress:end -->
 
 T1 is the only true blocker: nothing downstream works without a parser and a gate that trusts
@@ -327,6 +327,18 @@ stays with a person.
       names that specific mistake instead of suggesting the file may not be a ledger
       **Verified:** `python3 -m unittest tests.test_ledger_not_at_root tests.test_nothing_checked
       -v`. 2026-08-27
+- [x] **6.15** Sweep the release for what nobody had looked at. `/trigpoint-pause` stopped the
+      hooks and nothing else: `paused()` sat unused in the verifier, so `/trigpoint-verify` - the
+      one path that WRITES when a person invokes it - would untick tasks and rewrite the ledger of
+      a project whose owner had explicitly asked it to stop. It now refuses out loud, because a
+      command that appears to do nothing is its own bug. The staleness warning told the reader to
+      re-copy the five scripts OR re-run the skill, but only the skill writes `.trigpoint/version`,
+      so half the advice was a dead end that left the warning firing forever with no way to tell
+      why; advice that does not work teaches people to ignore warnings. Also removed 41 lines of
+      dead parser code left behind by the marker-boundary fix, an unused import, and corrected
+      four documents that still described pause as stopping only the hooks
+      **Verified:** `python3 -m unittest tests.test_incremental_verify.PausedProjectTests
+      tests.test_vendored_version -v`. 2026-08-27
 - [ ] **6.5b** Prove the INSTALL against a project that is not this one. 6.5a closed the half
       where a silently disabled checker still printed green, and 6.14 closed the layout bug and
       surveyed the grammar against 490 foreign documents. What is left is narrower than it was and

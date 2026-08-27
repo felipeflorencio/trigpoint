@@ -180,13 +180,6 @@ def parse_ledger(markdown_text: str) -> Ledger:
         elif heading.strip().lower().startswith(DONE_HEADING_PREFIX):
             ledger.done_criteria.extend(_extract_criteria(numbered_lines))
     return ledger
-
-
-def _is_fence_delimiter(line: str) -> bool:
-    stripped = line.strip()
-    return stripped.startswith(FENCE_MARKER) or stripped.startswith(TILDE_FENCE_MARKER)
-
-
 def _fence_marker(line: str) -> Optional[str]:
     """Return which fence marker a delimiter line opens or closes, or None."""
     stripped = line.strip()
@@ -409,40 +402,6 @@ def _boundary_positions(text, markers):
                     break
         index += 1
     return found
-
-
-def _marker_outside_inline_code(text: str, marker: str) -> int:
-    """Index of the first `marker` that is not inside an inline code span, or -1.
-
-    A task whose own description quotes the evidence marker -- writing
-    `**Verified:**` in backticks while describing the rule -- must not have its
-    evidence read from the middle of that sentence. This is the same principle
-    the module already applies to fenced blocks, one level down: an example of
-    evidence is documentation, not evidence.
-
-    Backtick runs open and close a span, and a span is closed only by a run of
-    the same length, which is how markdown lets `` ` `` appear inside code.
-    """
-    index = 0
-    length = len(text)
-    open_run = 0
-    while index < length:
-        if text[index] == "`":
-            run = 0
-            while index + run < length and text[index + run] == "`":
-                run += 1
-            if open_run == 0:
-                open_run = run
-            elif run == open_run:
-                open_run = 0
-            index += run
-            continue
-        if open_run == 0 and text.startswith(marker, index):
-            return index
-        index += 1
-    return -1
-
-
 def _evidence_spans(block: str) -> List[Tuple[str, str]]:
     """Each evidence marker's own text, ending where the NEXT marker begins.
 

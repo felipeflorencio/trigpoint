@@ -115,5 +115,25 @@ class VendoredVersionTests(unittest.TestCase):
         self.assertIn("unrecorded", session_start.vendored_version_warning(self.directory))
 
 
+    def test_the_advice_it_gives_actually_clears_the_warning(self):
+        """Half the advice was a dead end.
+
+        The warning said to re-copy the five scripts OR re-run the skill. Only
+        the skill writes `.trigpoint/version`, so anyone who followed the first
+        half kept being warned forever with no way to tell why. Advice that
+        does not work is worse than no advice: it teaches people to ignore the
+        warning.
+        """
+        self.stamp("0.2.0")
+        warning = session_start.vendored_version_warning(self.directory)
+        self.assertIn(session_start.VERSION_FILE, warning)
+
+    def test_following_the_advice_leaves_no_warning(self):
+        self.stamp("0.2.0")
+        self.assertNotEqual(session_start.vendored_version_warning(self.directory), "")
+        self.stamp(session_start.plugin_version())
+        self.assertEqual(session_start.vendored_version_warning(self.directory), "")
+
+
 if __name__ == "__main__":
     unittest.main()
