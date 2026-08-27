@@ -275,5 +275,95 @@ class DashboardShowsWhichKindOfClaimTests(unittest.TestCase):
         self.assertIn("tests.test_ledger_parse", html)
         self.assertIn("felipeflorencio/claude-plugins", html)
 
+THREE_MARKERS = """# Example - Roadmap
+
+## T1 - Publication
+
+**Scope:** A record, a blanked assertion, then another record
+**Blocked by:** nothing
+
+- [x] **1.1** Publish
+      **Recorded:** marketplace entry added on 2026-08-26
+      **Verified:**
+      **Recorded:** published `felipeflorencio/claude-plugins` on 2026-08-27
+"""
+
+PROSE_THEN_TWO_RECORDS = """# Example - Roadmap
+
+## T1 - Publication
+
+**Scope:** A prose assertion followed by two records
+**Blocked by:** nothing
+
+- [x] **1.1** Publish
+      **Verified:** reviewed by eye. 2026-08-26
+      **Recorded:** first record, no backticks
+      **Recorded:** second record naming `rm -rf /tmp/pwned`. 2026-08-27
+"""
+
+REGRESSED_BELOW_EVIDENCE = """# Example - Roadmap
+
+## T1 - Foundation
+
+**Scope:** A task carrying a regression note
+**Blocked by:** nothing
+
+- [x] **1.1** Build it
+      **Verified:** `make test`. 2026-08-27
+      **Regressed:** `make test` -> exit 1. `FAILED (failures=2)`. 2026-08-27
+"""
+
+
+class EveryMarkerBoundsTheSpanBeforeItTests(unittest.TestCase):
+    """One occurrence of each marker is not enough to bound the spans.
+
+    The first fix scanned for the FIRST `**Verified:**` and the FIRST
+    `**Recorded:**`, so whichever came last still ran to the end of the block.
+    A third marker after those two was absorbed exactly as before, and a task
+    could still hand a record's backticked name to the shell. Fixing the shape
+    that was reported rather than the class that produced it left the incident
+    reproducible.
+    """
+
+    def test_a_third_marker_is_not_absorbed_by_the_second(self):
+        self.assertEqual(verify.selectable(parse_ledger(THREE_MARKERS)), [])
+
+    def test_that_block_is_read_as_a_record_not_an_assertion(self):
+        self.assertEqual(task_by_id(THREE_MARKERS, "1.1").evidence_kind, "recorded")
+
+    def test_no_evidence_string_ever_contains_a_marker(self):
+        for ledger_text in (THREE_MARKERS, PROSE_THEN_TWO_RECORDS, BOTH_MARKERS_IN_ONE_BLOCK):
+            evidence = task_by_id(ledger_text, "1.1" if "1.1" in ledger_text else "5.2").evidence
+            self.assertNotIn("**Recorded:**", evidence)
+            self.assertNotIn("**Verified:**", evidence)
+
+    def test_a_prose_assertion_never_reaches_a_later_record(self):
+        commands = [command for _, command in verify.selectable(parse_ledger(PROSE_THEN_TWO_RECORDS))]
+        self.assertEqual(commands, [])
+
+    def test_a_regression_note_does_not_leak_into_the_evidence_it_follows(self):
+        task = task_by_id(REGRESSED_BELOW_EVIDENCE, "1.1")
+        self.assertNotIn("Regressed", task.evidence)
+        self.assertEqual(task.evidence, "`make test`. 2026-08-27")
+
+    def test_the_command_is_still_read_when_a_regression_note_follows(self):
+        commands = [command for _, command in verify.selectable(parse_ledger(REGRESSED_BELOW_EVIDENCE))]
+        self.assertEqual(commands, ["make test"])
+
+    def test_carriage_returns_do_not_reopen_the_hole(self):
+        commands = [
+            command
+            for _, command in verify.selectable(parse_ledger(THREE_MARKERS.replace("\n", "\r\n")))
+        ]
+        self.assertEqual(commands, [])
+
+    def test_a_marker_quoted_in_inline_code_still_bounds_nothing(self):
+        quoted = REGRESSED_BELOW_EVIDENCE.replace(
+            "- [x] **1.1** Build it",
+            "- [x] **1.1** Explain that `**Recorded:**` is never re-run",
+        )
+        self.assertEqual(task_by_id(quoted, "1.1").evidence, "`make test`. 2026-08-27")
+
+
 if __name__ == "__main__":
     unittest.main()

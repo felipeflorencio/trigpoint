@@ -33,6 +33,11 @@ RECORDED = "recorded"
 
 EVIDENCE_MARKERS = ((EVIDENCE_MARKER, VERIFIED), (RECORD_MARKER, RECORDED))
 
+# A regression note follows the evidence it contradicts and carries backticks of
+# its own, so it ends the span before it without ever starting one.
+REGRESSED_MARKER = "**Regressed:**"
+SPAN_BOUNDARIES = EVIDENCE_MARKERS + ((REGRESSED_MARKER, None),)
+
 FENCE_MARKER = "```"
 TILDE_FENCE_MARKER = "~~~"
 
@@ -359,6 +364,37 @@ def _extract_tasks(numbered_lines: List[NumberedLine]) -> List[Task]:
     return tasks
 
 
+def _boundary_positions(text, markers):
+    """Every occurrence of any marker outside an inline code span, in order.
+
+    One scan for all markers, rather than one scan per marker. Scanning per
+    marker can only ever report each one's first occurrence, and a span needs
+    the next boundary of ANY kind, whichever that turns out to be.
+    """
+    found = []
+    index = 0
+    length = len(text)
+    open_run = 0
+    while index < length:
+        if text[index] == "`":
+            run = 0
+            while index + run < length and text[index + run] == "`":
+                run += 1
+            if open_run == 0:
+                open_run = run
+            elif run == open_run:
+                open_run = 0
+            index += run
+            continue
+        if open_run == 0:
+            for marker, kind in markers:
+                if text.startswith(marker, index):
+                    found.append((index, len(marker), kind))
+                    break
+        index += 1
+    return found
+
+
 def _marker_outside_inline_code(text: str, marker: str) -> int:
     """Index of the first `marker` that is not inside an inline code span, or -1.
 
@@ -400,19 +436,21 @@ def _evidence_spans(block: str) -> List[Tuple[str, str]]:
     record's first backticked span as a command to run. The backticks in a
     record quote repository and product names, so that turned
     `felipeflorencio/claude-plugins` into something the shell was asked to
-    execute, and unticked a true task when the shell could not find it. A
-    ledger halfway through migrating from 0.2.0 has exactly that shape.
+    execute, and unticked a true task when the shell could not find it.
+
+    Every OCCURRENCE bounds the span before it, not merely the first of each
+    marker. Bounding only the first left the same hole open one marker further
+    along: a record, a blanked assertion and a second record put the last span
+    back on a run to the end of the block. Fixing the shape that was reported
+    rather than the class that produced it left the incident reproducible.
     """
-    found = []
-    for marker, kind in EVIDENCE_MARKERS:
-        position = _marker_outside_inline_code(block, marker)
-        if position != -1:
-            found.append((position, len(marker), kind))
-    found.sort()
+    found = _boundary_positions(block, SPAN_BOUNDARIES)
 
     spans: List[Tuple[str, str]] = []
     for index, entry in enumerate(found):
         position, marker_length, kind = entry
+        if kind is None:
+            continue
         end = found[index + 1][0] if index + 1 < len(found) else len(block)
         spans.append((kind, block[position + marker_length : end]))
     return spans
@@ -427,7 +465,11 @@ def _apply_evidence(task: Task, block_lines: List[str]) -> Task:
     all, so it falls through to the record rather than standing in its way.
     """
     block = "\n".join(block_lines)
-    by_kind = {kind: " ".join(text.split()) for kind, text in _evidence_spans(block)}
+    by_kind: dict = {}
+    for kind, span in _evidence_spans(block):
+        cleaned = " ".join(span.split())
+        if cleaned and kind not in by_kind:
+            by_kind[kind] = cleaned
     for _, kind in EVIDENCE_MARKERS:
         evidence = by_kind.get(kind)
         if evidence:
@@ -436,16 +478,9 @@ def _apply_evidence(task: Task, block_lines: List[str]) -> Task:
             break
 
     first_line = block_lines[0] if block_lines else ""
-    positions = [
-        position
-        for position in (
-            _marker_outside_inline_code(first_line, marker)
-            for marker, _ in EVIDENCE_MARKERS
-        )
-        if position != -1
-    ]
-    if positions:
-        first_line = first_line[: min(positions)]
+    boundaries = _boundary_positions(first_line, SPAN_BOUNDARIES)
+    if boundaries:
+        first_line = first_line[: boundaries[0][0]]
     task.text = " ".join(first_line.split())
     return task
 

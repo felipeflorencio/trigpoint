@@ -479,9 +479,6 @@ class HardWrappedMetadataTest(unittest.TestCase):
         self.assertEqual("", ledger.tracks[0].blocked_by)
 
 
-if __name__ == "__main__":
-    unittest.main()
-
 
 class InlineCodeEvidenceTests(unittest.TestCase):
     """A task that quotes the evidence marker must not have evidence read from it.
@@ -527,3 +524,6 @@ class InlineCodeEvidenceTests(unittest.TestCase):
             "- [ ] **1.1** Mentions `**Verified:**` and nothing more\n"
         )
         self.assertIsNone(ledger.tracks[0].tasks[0].evidence)
+
+if __name__ == "__main__":
+    unittest.main()

@@ -151,9 +151,6 @@ class DeduplicationTests(unittest.TestCase):
         self.assertIn("- [ ] **1.2**", finished)
 
 
-if __name__ == "__main__":
-    unittest.main()
-
 
 class AtomicWriteTests(unittest.TestCase):
     """A plan of record must never be left half-written.
@@ -216,3 +213,51 @@ class AtomicWriteTests(unittest.TestCase):
 
         verify.verify_ledger(self.ledger.path, runner=runner)
         self.assertTrue(all(size > 0 for size in sizes), sizes)
+
+
+class TheWritePreservesWhatItFoundTests(unittest.TestCase):
+    """Writing atomically is not enough; it must write the same file, the same way.
+
+    `scripts/build_dashboard.py` and `scripts/install_block.py` both resolve the
+    target through a symlink and carry the existing permission bits over before
+    replacing. The first attempt here copied neither, so a symlinked ROADMAP.md
+    was replaced by a regular file and the regression never reached the real
+    ledger, and a 0644 ledger silently became 0600. `open(path, "w")`, the thing
+    it replaced, got both of those right.
+    """
+
+    def setUp(self):
+        self.ledger = LedgerOnDisk(TWO_FAILING)
+        self.addCleanup(self.ledger.cleanup)
+
+    def test_a_symlinked_ledger_is_written_through_not_replaced(self):
+        real = os.path.join(self.ledger.directory, "real-roadmap.md")
+        os.rename(self.ledger.path, real)
+        os.symlink(real, self.ledger.path)
+
+        verify.verify_ledger(self.ledger.path, runner=lambda *a, **k: Failed())
+
+        self.assertTrue(os.path.islink(self.ledger.path), "the symlink was replaced")
+        with open(real, encoding="utf-8") as handle:
+            self.assertIn("- [ ] **1.1**", handle.read())
+
+    def test_the_ledgers_permissions_survive_a_regression(self):
+        os.chmod(self.ledger.path, 0o644)
+        verify.verify_ledger(self.ledger.path, runner=lambda *a, **k: Failed())
+        self.assertEqual(os.stat(self.ledger.path).st_mode & 0o777, 0o644)
+
+    def test_carriage_returns_are_not_silently_converted(self):
+        with open(self.ledger.path, "r", encoding="utf-8", newline="") as handle:
+            original = handle.read()
+        with open(self.ledger.path, "w", encoding="utf-8", newline="") as handle:
+            handle.write(original.replace("\n", "\r\n"))
+
+        verify.verify_ledger(self.ledger.path, runner=lambda *a, **k: Failed())
+
+        with open(self.ledger.path, "r", encoding="utf-8", newline="") as handle:
+            after = handle.read()
+        self.assertGreater(after.count("\r\n"), 0, "CRLF endings were rewritten as LF")
+
+
+if __name__ == "__main__":
+    unittest.main()

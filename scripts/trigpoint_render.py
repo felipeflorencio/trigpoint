@@ -100,9 +100,9 @@ ul.tasks li:first-child { border-top: 0; }
 .state.done { color: var(--done); }
 .task-id { display: inline-block; min-width: 2.6rem; color: var(--muted);
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .82rem; }
-.evidence.recorded { border-left: 2px solid var(--rule); padding-left: .5rem; font-style: italic; }
 .evidence { display: block; color: var(--muted); font-size: .8rem;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace; padding-left: 1.4rem; }
+.evidence.recorded { border-left: 2px solid var(--accent); margin-left: .5rem; padding-left: .9rem; font-style: italic; }
 footer { color: var(--muted); font-size: .82rem; border-top: 1px solid var(--rule);
   margin-top: 3rem; padding-top: 1rem; }
 .scroll { overflow-x: auto; }

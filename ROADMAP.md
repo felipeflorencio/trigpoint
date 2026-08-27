@@ -24,8 +24,8 @@ Generated. Do not hand-edit anything between the markers. Run `python3 scripts/b
 | **T3 Installation** | The CLAUDE.md instruction block installer | 3 | 3 | T1 |
 | **T4 Packaging** | The plugin and marketplace manifests, the slash commands, and the skill with its references and templates | 4 | 4 | T1, T2, T3 |
 | **T5 Publication** | The README, the cover art, the published marketplace listing, and a verified real install | 2 | 2 | T4 |
-| **T6 Continuous verification** | The hooks that state the plan at session start and re-prove it at the end of a turn, the approval gate that keeps command execution safe, and the parser fix that made the re-run trustworthy | 13 | 11 | nothing |
-| **Total** | | 32 | 30 | |
+| **T6 Continuous verification** | The hooks that state the plan at session start and re-prove it at the end of a turn, the approval gate that keeps command execution safe, and the parser fix that made the re-run trustworthy | 14 | 12 | nothing |
+| **Total** | | 33 | 31 | |
 <!-- trigpoint:progress:end -->
 
 T1 is the only true blocker: nothing downstream works without a parser and a gate that trusts
@@ -283,6 +283,20 @@ stays with a person.
       longer asserts a false cause for a ledger whose tracks parsed but whose tasks are unwritten
       **Verified:** `python3 -m unittest tests.test_recorded_evidence tests.test_incremental_verify
       tests.test_nothing_checked tests.test_vendored_version -v`. 2026-08-27
+- [x] **6.13** Close what the SECOND review found, after the first round of fixes was verified
+      and returned NO-GO again. 6.12's parser fix scanned for the FIRST occurrence of each
+      marker, so whichever marker came last still ran to the end of the block: a record, a
+      blanked assertion and a second record put `felipeflorencio/claude-plugins` back in front
+      of the shell. Fixing the shape that was reported rather than the class that produced it
+      left the incident reproducible. One scan now finds every occurrence of every boundary, and
+      a regression note bounds a span too. Also: `write_atomically` resolved neither symlinks nor
+      permissions, so a symlinked ledger was replaced by a regular file and the regression never
+      reached the real one, and a 0644 ledger became 0600 -- both of which `open(path, "w")` had
+      got right by accident; a CRLF ledger was being rewritten as LF; an unreadable version stamp
+      killed the session hook; and three test files hid classes below `unittest.main()`, where
+      the hidden ones were the evidence for the findings they were written to close
+      **Verified:** `python3 -m unittest tests.test_recorded_evidence tests.test_incremental_verify
+      tests.test_vendored_version tests.test_manifests -v`. 2026-08-27
 - [ ] **6.5b** Prove the grammar and the install against a project that is not this one. 6.5a
       closes the half where a silently disabled checker still printed green, in any repository.
       What remains cannot be measured from in here: whether the grammar fits ledgers written by

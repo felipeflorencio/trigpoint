@@ -59,7 +59,10 @@ def vendored_version_warning(start_directory: str) -> str:
     try:
         with open(stamp_path, encoding="utf-8") as handle:
             vendored = handle.read().strip()
-    except OSError:
+    except (OSError, ValueError):
+        # ValueError covers UnicodeDecodeError. A stamp nobody can read is a
+        # stamp that does not match, and taking the whole hook down with a
+        # traceback is worse than any staleness it was about to report.
         vendored = ""
     if vendored == running:
         return ""

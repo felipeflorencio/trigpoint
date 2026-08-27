@@ -34,7 +34,14 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Callable, Dict, List, Optional, Tuple
 
-from trigpoint_ledger import TASK_LINE, VERIFIED, Ledger, Task, parse_ledger
+from trigpoint_ledger import (
+    REGRESSED_MARKER,
+    TASK_LINE,
+    VERIFIED,
+    Ledger,
+    Task,
+    parse_ledger,
+)
 
 TAIL_LIMIT = 240
 DEFAULT_TIMEOUT = 120
@@ -42,7 +49,6 @@ STATE_DIRECTORY = ".trigpoint"
 APPROVALS_FILE = "approved-commands.json"
 PAUSE_FILE = "paused"
 EVIDENCE_MARKER = "**Verified:**"
-REGRESSED_MARKER = "**Regressed:**"
 
 BACKTICKED = re.compile(r"`([^`]+)`")
 
@@ -299,18 +305,27 @@ def write_atomically(target_path: str, contents: str) -> None:
     regression as it is found multiplies how often the process sits inside that
     window, and does so on exactly the path the Stop hook's budget kills. A
     ledger cut in half is a worse outcome than the silent discard that writing
-    incrementally removed, so the write goes to a sibling temporary file and
-    `os.replace` swaps it in one step. `scripts/install_block.py` already did
-    this; this is the same technique.
+    incrementally removed.
+
+    Atomicity alone is not enough: it must replace the SAME file, with the same
+    permissions. `scripts/build_dashboard.py` and `scripts/install_block.py`
+    both resolve through a symlink and carry the existing mode across, and
+    `open(path, "w")` did both by accident. A first version here did neither,
+    so a symlinked ROADMAP.md was replaced by a regular file and the regression
+    never reached the real ledger, and a 0644 ledger quietly became 0600.
     """
-    directory = os.path.dirname(os.path.abspath(target_path))
+    target = os.path.realpath(target_path)
+    existing_mode = os.stat(target).st_mode if os.path.isfile(target) else None
     handle = tempfile.NamedTemporaryFile(
-        mode="w", encoding="utf-8", newline="", dir=directory, delete=False
+        mode="w", encoding="utf-8", newline="",
+        dir=os.path.dirname(target) or ".", delete=False,
     )
     try:
         handle.write(contents)
         handle.close()
-        os.replace(handle.name, target_path)
+        if existing_mode is not None:
+            os.chmod(handle.name, existing_mode & 0o7777)
+        os.replace(handle.name, target)
     except Exception:
         handle.close()
         if os.path.exists(handle.name):
@@ -343,7 +358,7 @@ def verify_ledger(ledger_path: str, runner: Callable = subprocess.run,
     command twice cannot produce two answers worth having.
     """
     repository_root = os.path.dirname(os.path.abspath(ledger_path))
-    with open(ledger_path, encoding="utf-8") as handle:
+    with open(ledger_path, encoding="utf-8", newline="") as handle:
         original = handle.read()
 
     approvals = load_approvals(repository_root)
@@ -359,7 +374,7 @@ def verify_ledger(ledger_path: str, runner: Callable = subprocess.run,
     report: List[str] = []
     for command, task_ids in tasks_by_command.items():
         outcome = run_command(command, repository_root, timeout, runner)
-        with open(ledger_path, encoding="utf-8") as handle:
+        with open(ledger_path, encoding="utf-8", newline="") as handle:
             current = handle.read()
         outcomes: Dict[str, Outcome] = {task_id: outcome for task_id in task_ids}
         updated, applied = apply_regressions(current, outcomes)

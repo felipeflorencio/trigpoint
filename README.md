@@ -265,7 +265,7 @@ whose evidence is still an unfilled template:
 
 ```
 $ python3 .trigpoint/check_drift.py ROADMAP.md; echo "exit code: $?"
-ROADMAP.md: 2 task(s) in 1 track(s); 2 ticked, 1 carrying evidence; 2 checkbox line(s) seen.
+ROADMAP.md: 2 task(s) in 1 track(s) and 0 definition-of-done criteria; 2 ticked, 1 carrying evidence; 2 checkbox line(s) read, 0 not claimed as either.
 ERROR  ROADMAP.md:8  task 1.1 is ticked with nothing behind it. Add a **Verified:** line naming the command that was run, or a **Recorded:** line stating what happened and when, or untick it.
 ERROR  ROADMAP.md:9  task 1.2 is ticked but its evidence line still contains an unfilled {{ placeholder }}. Record the command that was actually run, or what actually happened, or untick it.
 2 error(s), 0 warning(s) in ROADMAP.md
@@ -273,13 +273,14 @@ exit code: 1
 ```
 
 **The gate states what it read, and refuses to pass a file it read nothing from.** Exit codes are
-`0` clean, `1` at least one error, `2` unreadable, and `3` nothing was checked. Exit 3 is the one
+`0` clean, `1` at least one error, `2` the ledger or the install cannot be read, and `3` nothing
+was checked. Exit 3 is the one
 worth knowing about: point the gate at a ROADMAP.md that has never been converted and you get a
 diagnostic rather than a green tick.
 
 ```
 $ python3 .trigpoint/check_drift.py PLANS.md; echo "exit code: $?"
-PLANS.md: 0 task(s) in 0 track(s); 0 ticked, 0 carrying evidence; 33 checkbox line(s) seen.
+PLANS.md: 0 task(s) in 0 track(s) and 0 definition-of-done criteria; 0 ticked, 0 carrying evidence; 33 checkbox line(s) read, 33 not claimed as either.
 PLANS.md: no tasks parsed although 33 checkbox line(s) are present. Either this file is not a Trigpoint ledger, or the parser has stopped recognising it. A section becomes a track by carrying a **Scope:** line, and a task line reads `- [ ] **1.1** text`. NOTHING WAS CHECKED; this is not a pass.
 exit code: 3
 ```
@@ -299,8 +300,10 @@ tracks**.
 
 - **It does not replace static analysis.** It establishes ground truth for planning. It is not a
   linter and it is not a type checker; run those too.
-- **It is version 0.3.0.** The ledger, the drift gate and the verifier are covered by 275
-  tests. The plan it hands you is a strong first draft to argue with, not a verdict.
+- **It is version 0.3.0.** The ledger, the drift gate and the verifier are covered by a test
+  suite CI runs on every push; `python3 -m unittest discover -s tests` reports the count, which is
+  why this sentence does not. A number here that nothing re-reads is exactly the decoration this
+  tool stopped keeping in its own evidence lines, and it had already been wrong twice. The plan it hands you is a strong first draft to argue with, not a verdict.
 
 ---
 

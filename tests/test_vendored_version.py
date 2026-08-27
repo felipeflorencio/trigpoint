@@ -98,5 +98,22 @@ class VendoredVersionTests(unittest.TestCase):
         )
 
 
+    def test_an_unreadable_stamp_does_not_kill_the_hook(self):
+        """`except OSError` does not catch UnicodeDecodeError, which is a ValueError.
+
+        `plugin_version()` one function above already catches both. A version
+        file with non-UTF-8 bytes took the whole SessionStart hook down with a
+        traceback, which is a worse outcome than any staleness it was reporting.
+        """
+        with open(os.path.join(self.state, "version"), "wb") as handle:
+            handle.write(b"\xff\xfe not utf-8 at all")
+        warning = session_start.vendored_version_warning(self.directory)
+        self.assertIn("unrecorded", warning)
+
+    def test_a_stamp_that_is_a_directory_does_not_kill_the_hook(self):
+        os.makedirs(os.path.join(self.state, "version"))
+        self.assertIn("unrecorded", session_start.vendored_version_warning(self.directory))
+
+
 if __name__ == "__main__":
     unittest.main()
