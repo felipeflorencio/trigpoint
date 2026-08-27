@@ -43,7 +43,8 @@ validation: 17 missing columns, 2 missing tables.
 
 - [ ] **1.1** Write `V1__reconcile_entity_drift.sql`
 - [x] **1.2** Set `ddl-auto=validate` in the dev profile
-      **Verified:** `./gradlew bootRun`. 2026-08-27
+      **Verified:** `grep -q '^spring.jpa.hibernate.ddl-auto=validate$'
+      src/main/resources/application-dev.properties`. 2026-08-27
 ```
 
 **Rule 1.** `## T<id> <name>` opens a track. The `**Scope:**` and `**Blocked by:**` lines are its

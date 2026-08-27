@@ -19,6 +19,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
 from trigpoint_ledger import (
     CRITERION_LINE,
+    count_checkbox_lines,
     HEADING_LINE,
     METADATA_LINE,
     TASK_LINE,
@@ -147,6 +148,23 @@ def _split_lanes(value: Optional[str]) -> List[str]:
     return [item.strip() for item in value.split(",") if item.strip()]
 
 
+STATE_DIRECTORY = ".trigpoint"
+PAUSE_FILE = "paused"
+DISABLE_VARIABLE = "TRIGPOINT_DISABLE"
+
+
+def find_state_root(start_directory):
+    """The nearest ancestor holding `.trigpoint/`, or None."""
+    current = os.path.abspath(start_directory)
+    while True:
+        if os.path.isdir(os.path.join(current, STATE_DIRECTORY)):
+            return current
+        parent = os.path.dirname(current)
+        if parent == current:
+            return None
+        current = parent
+
+
 def main(argv: List[str]) -> int:
     parser = argparse.ArgumentParser(description="Regenerate ledger table and dashboard")
     parser.add_argument("--ledger", default="ROADMAP.md")
@@ -159,8 +177,34 @@ def main(argv: List[str]) -> int:
         sys.stderr.write("cannot read ledger: {0}\n".format(arguments.ledger))
         return 2
 
+    # The third of the three CLIs that read a ledger. The other two were taught
+    # to refuse a file they parsed as nothing; this one kept exiting 0 and
+    # writing a dashboard reading "0 of 0 tasks complete across 0 tracks" over a
+    # real plan it could not read. A plausible artefact is worse than an error,
+    # because nobody goes looking behind it.
+    state_root = find_state_root(str(ledger_path.parent))
+    if state_root and (pathlib.Path(state_root) / STATE_DIRECTORY / PAUSE_FILE).exists():
+        print("paused: .trigpoint/paused exists, so nothing was regenerated. "
+              "Remove that file to resume.")
+        return 0
+    if state_root and os.environ.get(DISABLE_VARIABLE):
+        print("{0} is set, so nothing was regenerated.".format(DISABLE_VARIABLE))
+        return 0
+
     original_text = ledger_path.read_text(encoding="utf-8")
     ledger = parse_ledger(original_text)
+    if ledger.task_count == 0:
+        sys.stderr.write(
+            "{0}: no tasks parsed{1}. Nothing was regenerated, because a dashboard "
+            "built from a ledger this tool could not read says \"0 of 0 tasks\" over "
+            "a real plan and looks like an answer.\n".format(
+                arguments.ledger,
+                "" if not count_checkbox_lines(original_text)
+                else " although {0} checkbox line(s) are present".format(
+                    count_checkbox_lines(original_text)),
+            )
+        )
+        return 3
     original_lines = original_text.splitlines()
 
     applied: List[str] = []

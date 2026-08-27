@@ -48,9 +48,11 @@ is the work nobody predicted. It gets mentioned in conversation, and it dies whe
 ## What Trigpoint does about it
 
 **Nobody types a number.** The summary table is regenerated from the task lists themselves. A
-count cannot disagree with the tasks it counts, because it is derived from them. Continuous
-integration regenerates it and fails the build on any difference, so drift is not discouraged, it
-is impossible.
+count cannot disagree with the tasks it counts, because it is derived from them. Add the two-line
+regenerate-and-diff step to your CI, as this repository does, and the build fails on any
+difference, so drift stops being discouraged and starts being impossible. Trigpoint does not write
+that step into your workflow for you; until you add it, the guarantee is only as good as running
+`/trigpoint-sync`.
 
 **A tick requires evidence.** A ticked task must carry the command that was run, or, when no
 command can re-check the work, a record of what happened. There is no exemption for obvious tasks,
@@ -131,8 +133,9 @@ Nobody types these numbers. This is the current table from this repository, verb
 | **T2 Generation** | The generated progress table, the dashboard renderer, and the sync CLI that writes both | 4 | 4 | T1 |
 | **T3 Installation** | The CLAUDE.md instruction block installer | 3 | 3 | T1 |
 | **T4 Packaging** | The plugin and marketplace manifests, the slash commands, and the skill with its references and templates | 4 | 4 | T1, T2, T3 |
-| **T5 Publication** | The README, the cover art, the published marketplace listing, and a verified real install | 2 | 0 | T4 |
-| **Total** | | 19 | 17 | |
+| **T5 Publication** | The README, the cover art, the published marketplace listing, and a verified real install | 2 | 2 | T4 |
+| **T6 Continuous verification** | The hooks that state the plan at session start and re-prove it at the end of a turn, the approval gate that keeps command execution safe, and the parser fix that made the re-run trustworthy | 18 | 16 | nothing |
+| **Total** | | 37 | 35 | |
 <!-- trigpoint:progress:end -->
 ```
 
@@ -234,7 +237,8 @@ did not, so an absent lane never passes for a clean one.
 
 ## Watch it refuse
 
-Both transcripts below are real output, run against this repository.
+Both transcripts below show a ledger with two deliberate faults in it, as an installed
+project would run the gate. This repository's own gate runs from `scripts/`, and passes.
 
 **A hand-edited count does not survive.** The `Total` row was edited by hand from `19 | 17` to
 `24 | 22` on a scratch copy, then the generator was run:

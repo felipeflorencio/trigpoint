@@ -208,6 +208,25 @@ def run_command(command: str, cwd: str, timeout: int = DEFAULT_TIMEOUT,
 # ------------------------------------------------------------------ writing
 
 
+# The checkbox is the one at the START of the task line. Replacing the first
+# "- [x]" found anywhere in the string rewrote a task whose own text quoted a
+# checkbox before its real one.
+CHECKBOX_AT_LINE_START = re.compile(r"^(\s*[-*+]\s+)\[[xX]\]")
+
+# `splitlines()` breaks on nine characters that `split("\n")` ignores. The
+# parser numbers lines with the first and this module used to address them with
+# the second, so one \r or U+2028 above a task shifted every line number after
+# it and the wrong box was edited. Splitting once, with endings kept, means the
+# two can no longer disagree and the file survives byte-for-byte.
+def _split_keeping_endings(markdown_text: str) -> List[str]:
+    return markdown_text.splitlines(keepends=True)
+
+
+def _line_ending_of(line: str) -> str:
+    stripped = line.rstrip("\r\n\x0b\x0c\x1c\x1d\x1e\x85\u2028\u2029")
+    return line[len(stripped):] or "\n"
+
+
 def _task_block_end(lines: List[str], start: int) -> int:
     """Index of the last line belonging to the task that starts at `start`."""
     end = start
@@ -222,8 +241,11 @@ def _task_block_end(lines: List[str], start: int) -> int:
 
 
 def _regressed_note(indent: str, command: str, outcome: Outcome) -> str:
-    return "{0}{1} `{2}` -> exit {3}. `{4}`. {5}".format(
-        indent, REGRESSED_MARKER, command, outcome.exit_code, outcome.tail, outcome.at
+    # A command that printed nothing left an empty backtick pair in the ledger,
+    # which is an unbalanced-by-length run and reads as a typo.
+    tail = " `{0}`.".format(outcome.tail) if outcome.tail else ""
+    return "{0}{1} `{2}` -> exit {3}.{4} {5}".format(
+        indent, REGRESSED_MARKER, command, outcome.exit_code, tail, outcome.at
     )
 
 
@@ -234,7 +256,7 @@ def apply_regressions(markdown_text: str, outcomes: Dict[str, Outcome]) -> Tuple
     separately. A batch that insists every task be found before writing any of
     them discards good edits because of one bad identifier.
     """
-    lines = markdown_text.split("\n")
+    lines = _split_keeping_endings(markdown_text)
     ledger = parse_ledger(markdown_text)
     known = {
         task.task_id: (task, command)
@@ -263,7 +285,7 @@ def apply_regressions(markdown_text: str, outcomes: Dict[str, Outcome]) -> Tuple
 
         task, command = known[task_id]
         index = task.line_number - 1
-        lines[index] = lines[index].replace("- [x]", "- [ ]", 1).replace("- [X]", "- [ ]", 1)
+        lines[index] = CHECKBOX_AT_LINE_START.sub(r"\1[ ]", lines[index], count=1)
 
         end = _task_block_end(lines, index)
         indent = ""
@@ -279,11 +301,15 @@ def apply_regressions(markdown_text: str, outcomes: Dict[str, Outcome]) -> Tuple
             for position in range(index + 1, end + 1)
             if lines[position].strip().startswith(REGRESSED_MARKER)
         ]
+        ending = _line_ending_of(lines[end]) if end < len(lines) else "\n"
         note = _regressed_note(indent, command, outcome)
         if existing:
-            lines[existing[0]] = note
+            lines[existing[0]] = note + _line_ending_of(lines[existing[0]])
         else:
-            insertions.append((end + 1, note))
+            if end < len(lines) and not _line_ending_of(lines[end]).strip("\n") \
+                    and not lines[end].endswith(("\n", "\r")):
+                lines[end] = lines[end] + ending
+            insertions.append((end + 1, note + ending))
         applied.append("{0} unticked, its recorded check now exits {1}".format(
             task_id, outcome.exit_code))
 
@@ -291,10 +317,31 @@ def apply_regressions(markdown_text: str, outcomes: Dict[str, Outcome]) -> Tuple
         position, note = pair
         lines.insert(position + offset, note)
 
-    return "\n".join(lines), applied + failed
+    return "".join(lines), applied + failed
 
 
 # ------------------------------------------------------------------ driving
+
+
+DISABLE_VARIABLE = "TRIGPOINT_DISABLE"
+LEDGER_NAMES = ("ROADMAP.md", os.path.join("docs", "ROADMAP.md"))
+
+
+def find_state_root(start_directory: str) -> Optional[str]:
+    """The nearest ancestor of `start_directory` holding `.trigpoint/`, or None."""
+    current = os.path.realpath(start_directory)
+    while True:
+        if os.path.isdir(os.path.join(current, STATE_DIRECTORY)):
+            return current
+        parent = os.path.dirname(current)
+        if parent == current:
+            return None
+        current = parent
+
+
+def disabled(environment=None) -> bool:
+    environment = os.environ if environment is None else environment
+    return bool(environment.get(DISABLE_VARIABLE))
 
 
 def project_root_for(ledger_path: str) -> str:
@@ -311,15 +358,8 @@ def project_root_for(ledger_path: str) -> str:
     Falling back to the ledger's own directory keeps a checkout that never
     initialised behaving exactly as before.
     """
-    ledger_directory = os.path.dirname(os.path.abspath(ledger_path))
-    current = ledger_directory
-    while True:
-        if os.path.isdir(os.path.join(current, STATE_DIRECTORY)):
-            return current
-        parent = os.path.dirname(current)
-        if parent == current:
-            return ledger_directory
-        current = parent
+    ledger_directory = os.path.dirname(os.path.realpath(ledger_path))
+    return find_state_root(ledger_directory) or ledger_directory
 
 
 def write_atomically(target_path: str, contents: str) -> None:
@@ -427,7 +467,7 @@ def main(argv: List[str]) -> int:
             sys.stderr.write(_usage())
             return 2
         command = arguments[1]
-        root = "."
+        root = find_state_root(".") or "."
         if "--root" in arguments:
             position = arguments.index("--root")
             if position + 1 < len(arguments):
@@ -440,6 +480,11 @@ def main(argv: List[str]) -> int:
     if not os.path.exists(ledger):
         sys.stderr.write("no ledger at {0}\n".format(ledger))
         return 2
+
+    if disabled():
+        print("{0} is set, so nothing was re-run. Unset it to resume.".format(
+            DISABLE_VARIABLE))
+        return 0
 
     if paused(project_root_for(ledger)):
         # `paused()` sat here unused. The hooks consult their own guard, so a

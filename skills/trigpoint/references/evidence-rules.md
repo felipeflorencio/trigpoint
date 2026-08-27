@@ -56,7 +56,8 @@ same evidence requirement, and here the requirement is mechanical.
 
 ```markdown
 - [x] **1.2** Set `ddl-auto=validate` in the dev profile
-      **Verified:** `./gradlew bootRun`. 2026-08-27
+      **Verified:** `grep -q '^spring.jpa.hibernate.ddl-auto=validate$'
+      src/main/resources/application-dev.properties`. 2026-08-27
 ```
 
 **A `[x]` with no evidence line is a hard error and the build refuses.** Evidence means a
@@ -85,7 +86,8 @@ So there are two markers, and choosing between them is the author's judgement:
 
 ```markdown
 - [x] **1.2** Set `ddl-auto=validate` in the dev profile
-      **Verified:** `./gradlew bootRun`. 2026-08-27
+      **Verified:** `grep -q '^spring.jpa.hibernate.ddl-auto=validate$'
+      src/main/resources/application-dev.properties`. 2026-08-27
 
 - [x] **5.2** Publish the plugin to a marketplace and install it from outside this checkout
       **Recorded:** Published to `felipeflorencio/claude-plugins`; `claude plugin update
@@ -114,7 +116,7 @@ backticked span.
 The line is therefore short, and a trivial task costs one line:
 
 ```markdown
-- [x] **0.4** Delete stale `bin/`   **Verified:** `ls bin/`. 2026-08-27
+- [x] **0.4** Delete stale `bin/`   **Verified:** `test ! -e bin/`. 2026-08-27
 ```
 
 ## Two operational guards

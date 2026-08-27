@@ -38,5 +38,8 @@ Never approve in bulk, and never approve a command that writes, deploys, deletes
 Verify commands are read-only assertions. This gate exists because cloning a repository that
 contains a ledger would otherwise run its author's commands on this machine.
 
+It exits 1 when anything was unticked and 0 otherwise, so a non-zero exit here means the
+ledger changed, not that the command failed.
+
 Report unticked tasks, regressions and skipped commands separately and verbatim. If something
 regressed, say so plainly rather than burying it, and do not re-tick it to make the report tidy.

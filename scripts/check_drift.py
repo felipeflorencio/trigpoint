@@ -88,7 +88,8 @@ def describe_coverage(ledger, checkbox_lines: int, ledger_path: str) -> str:
 
 
 def nothing_checked_message(checkbox_lines: int, ledger_path: str,
-                            tracks: int = 0, task_shaped: int = 0) -> str:
+                            tracks: int = 0, task_shaped: int = 0,
+                            has_scope: bool = False) -> str:
     """Say why nothing was checked, and say something true.
 
     Refusing to pass is right; asserting a false cause for it is not. A ledger
@@ -102,6 +103,16 @@ def nothing_checked_message(checkbox_lines: int, ledger_path: str,
         if not checkbox_lines
         else " although {0} checkbox line(s) are present".format(checkbox_lines)
     )
+    if has_scope and not tracks:
+        # They wrote the line the other branch would tell them to write. A
+        # track heading must be exactly `##`, and telling this author to add a
+        # `**Scope:**` line sends them looking for something already there.
+        return (
+            "{0}: a **Scope:** line is present but no track was recognised{1}. A track "
+            "heading is exactly two hashes -- `## T1 - Foundation` -- and the "
+            "**Scope:** line must sit under one. A deeper heading such as `###` is not "
+            "a track. This is not a pass.".format(ledger_path, seen)
+        )
     if task_shaped and not tracks:
         return (
             "{0}: {1} line(s) are already task-shaped but sit in no track, so none of them "
@@ -112,10 +123,15 @@ def nothing_checked_message(checkbox_lines: int, ledger_path: str,
             )
         )
     if tracks:
+        loose = (
+            "" if not task_shaped
+            else " {0} line(s) elsewhere in the file are task-shaped but sit in no "
+                 "track, so they are not checked either.".format(task_shaped)
+        )
         return (
-            "{0}: {1} track(s) recognised but no tasks written in them{2}. A task line "
+            "{0}: {1} track(s) recognised but no tasks written in them{2}.{3} A task line "
             "reads `- [ ] **1.1** text`. There is nothing here to check yet, so this is "
-            "not a pass.".format(ledger_path, tracks, seen)
+            "not a pass.".format(ledger_path, tracks, seen, loose)
         )
     return (
         "{0}: no tasks parsed{1}. Either this file is not a Trigpoint ledger, or the "
@@ -143,7 +159,7 @@ def main(argv: List[str]) -> int:
         sys.stderr.write(
             nothing_checked_message(
                 checkbox_lines, ledger_path, len(ledger.tracks),
-                count_task_shaped_lines(text),
+                count_task_shaped_lines(text), "**Scope:**" in text,
             )
             + "\n"
         )

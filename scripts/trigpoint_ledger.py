@@ -385,7 +385,18 @@ def _boundary_positions(text, markers):
     length = len(text)
     open_run = 0
     while index < length:
-        if text[index] == "`":
+        character = text[index]
+        if character == "\n":
+            # Markdown inline code cannot span lines, and this scanner used to
+            # let it. One stray backtick therefore opened a span that swallowed
+            # every marker below it: the record marker went invisible and the
+            # assertion span ran to the end of the block, which is review 1's
+            # absorption reachable again, and a stray backtick in a task's own
+            # text hid that task's evidence from the gate entirely.
+            open_run = 0
+            index += 1
+            continue
+        if character == "`":
             run = 0
             while index + run < length and text[index + run] == "`":
                 run += 1

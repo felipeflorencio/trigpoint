@@ -25,7 +25,11 @@ from trigpoint_ledger import count_checkbox_lines, parse_ledger  # noqa: E402
 
 
 def summarise(report, awaiting) -> str:
-    parts = [line for line in report if "unticked" in line or "not found" in line]
+    # Filtering by substring meant a new outcome had to remember to phrase
+    # itself in an approved way. "could not be run" matched neither word, so the
+    # end-of-turn path silently dropped every one of them while the CLI
+    # reported them. Anything that is not a plain "still passing" is news.
+    parts = [line for line in report if "still passing" not in line]
     if awaiting:
         parts.append(
             "{0} recorded command(s) have never been approved to run here, so they "

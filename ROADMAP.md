@@ -24,8 +24,8 @@ Generated. Do not hand-edit anything between the markers. Run `python3 scripts/b
 | **T3 Installation** | The CLAUDE.md instruction block installer | 3 | 3 | T1 |
 | **T4 Packaging** | The plugin and marketplace manifests, the slash commands, and the skill with its references and templates | 4 | 4 | T1, T2, T3 |
 | **T5 Publication** | The README, the cover art, the published marketplace listing, and a verified real install | 2 | 2 | T4 |
-| **T6 Continuous verification** | The hooks that state the plan at session start and re-prove it at the end of a turn, the approval gate that keeps command execution safe, and the parser fix that made the re-run trustworthy | 17 | 15 | nothing |
-| **Total** | | 36 | 34 | |
+| **T6 Continuous verification** | The hooks that state the plan at session start and re-prove it at the end of a turn, the approval gate that keeps command execution safe, and the parser fix that made the re-run trustworthy | 18 | 16 | nothing |
+| **Total** | | 37 | 35 | |
 <!-- trigpoint:progress:end -->
 
 T1 is the only true blocker: nothing downstream works without a parser and a gate that trusts
@@ -339,6 +339,25 @@ stays with a person.
       four documents that still described pause as stopping only the hooks
       **Verified:** `python3 -m unittest tests.test_incremental_verify.PausedProjectTests
       tests.test_vendored_version -v`. 2026-08-27
+- [x] **6.16** Close everything a third adversarial review found, by the class rather than the
+      example. Two of them unticked true work. A stray `\r` or `U+2028` anywhere above a task
+      desynchronised the parser, which numbers lines with `splitlines()`, from the writer, which
+      addressed them with `split("\n")`: the failing task stayed ticked and a passing one was
+      unticked and stamped with someone else's command. That was a regression introduced by this
+      release's own fix for a CRLF report - the universal-newline read it replaced had been
+      normalising all nine divergent characters away. And the canonical evidence example shipped
+      in the reference and the template was `ls bin/` for "delete stale bin/", which passes only
+      while the task is FALSE, so following the instruction correctly unticked the box. Also:
+      inline-code state no longer survives a line ending, which had reopened the marker
+      absorption and made the gate accuse tasks that carry evidence; `--approve`, pause,
+      `TRIGPOINT_DISABLE` and the ledger's location now resolve one way at every entry point
+      rather than per call site; `build_dashboard.py` is the third and last CLI to stop reporting
+      success for a ledger it read as nothing; the Stop hook reports every outcome rather than
+      filtering prose; the README's "verbatim" table is now checked against the real one; and the
+      generated TOML is finally parsed by tests that catch all three escaper mutations
+      **Verified:** `python3 -m unittest tests.test_line_splitting
+      tests.test_shipped_evidence_examples tests.test_guards_at_every_entry
+      tests.test_readme_quotes_are_true -v`. 2026-08-27
 - [ ] **6.5b** Prove the INSTALL against a project that is not this one. 6.5a closed the half
       where a silently disabled checker still printed green, and 6.14 closed the layout bug and
       surveyed the grammar against 490 foreign documents. What is left is narrower than it was and
@@ -370,7 +389,8 @@ and survive a context reset. Each contract below is machine-checked, so drift br
 | **C4** | A ticked task always carries a real `**Verified:**` line, never an unfilled `{{ placeholder }}` | `scripts/check_drift.py`, run in CI on every push |
 
 **Ledger discipline.** A box above is ticked only with the verification command and its output
-recorded on a `**Verified:**` line. Never on assumption. `python3 scripts/check_drift.py
+recorded on a `**Verified:**` line naming the command, or a `**Recorded:**` line stating
+what happened for work no command can re-check. Never on assumption. `python3 scripts/check_drift.py
 ROADMAP.md` fails the build otherwise.
 
 ---

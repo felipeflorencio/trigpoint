@@ -35,7 +35,10 @@ BLOCK_BODY = """## The ledger
   untick its box, or a `**Recorded:**` line stating what happened, for work no
   command can re-check. Never invent a command to satisfy the gate.
 - `python3 .trigpoint/check_drift.py` exits non-zero when a box is ticked with
-  no evidence recorded.
+  no evidence recorded, and when it can parse no tasks at all.
+- `.trigpoint/version` records which plugin version these copies came from. If
+  a session warns that it is stale, re-run the trigpoint skill, or re-copy the
+  five scripts AND write the new version into that file.
 
 Mode: {mode}"""
 

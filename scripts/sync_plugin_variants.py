@@ -148,6 +148,15 @@ def render_command_toml(description: str, body: str) -> str:
     quotes has to be broken or it closes the string early.
     """
     escaped = body.replace("\\", "\\\\").replace('"""', '\\"\\"\\"')
+    # TOML forbids raw control characters in a string. A body carrying an ESC
+    # from a coloured example, or a lone carriage return, produced a file no
+    # parser would accept. Tab and newline are the two that are legal as-is.
+    escaped = "".join(
+        character if character in "\t\n" or ord(character) >= 0x20
+        else "\\u{0:04X}".format(ord(character))
+        for character in escaped
+        if character != "\r"
+    )
     lines = []
     if description:
         lines.append("description = {0}".format(_toml_basic_string(description)))
@@ -183,9 +192,48 @@ def command_targets() -> List[Tuple[pathlib.Path, str]]:
     return generated
 
 
+def context_file_targets() -> List[Tuple[pathlib.Path, str]]:
+    """`GEMINI.md`, generated from `AGENTS.md`.
+
+    The two were byte-identical, hand-maintained copies of the same rules, which
+    is the drift this module exists to prevent. Gemini's manifest names its own
+    context file, so the content has to appear twice on disk; nothing says it
+    has to be typed twice.
+    """
+    source = REPOSITORY_ROOT / "AGENTS.md"
+    return [(REPOSITORY_ROOT / "GEMINI.md", source.read_text(encoding="utf-8"))]
+
+
+PROGRESS_BEGIN = "<!-- trigpoint:progress:begin -->"
+PROGRESS_END = "<!-- trigpoint:progress:end -->"
+
+
+def readme_targets() -> List[Tuple[pathlib.Path, str]]:
+    """The README's copy of the ledger's progress table.
+
+    The README calls it "the current table from this repository, verbatim" and
+    it had drifted to five tracks while the ledger showed six. Retyping it
+    correctly once only resets the clock: this is a tool whose whole argument is
+    that a hand-copied number drifts, making that argument on a page carrying a
+    hand-copied number. So it is copied by the same script that copies
+    everything else.
+    """
+    ledger = (REPOSITORY_ROOT / "ROADMAP.md").read_text(encoding="utf-8")
+    start = ledger.index(PROGRESS_BEGIN)
+    finish = ledger.index(PROGRESS_END, start) + len(PROGRESS_END)
+    region = ledger[start:finish]
+
+    readme_path = REPOSITORY_ROOT / "README.md"
+    readme = readme_path.read_text(encoding="utf-8")
+    start = readme.index(PROGRESS_BEGIN)
+    finish = readme.index(PROGRESS_END, start) + len(PROGRESS_END)
+    return [(readme_path, readme[:start] + region + readme[finish:])]
+
+
 def _everything() -> List[Tuple[pathlib.Path, str]]:
-    """Every generated file: the four manifests, then the Gemini commands."""
-    return [(path, serialise(manifest)) for path, manifest in targets()] + command_targets()
+    """Every generated file: manifests, Gemini commands, then GEMINI.md."""
+    return ([(path, serialise(manifest)) for path, manifest in targets()]
+            + command_targets() + context_file_targets() + readme_targets())
 
 
 def check() -> List[str]:

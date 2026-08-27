@@ -110,7 +110,10 @@ class NoStateDirectoryAnywhereTests(unittest.TestCase):
         path = os.path.join(directory, "ROADMAP.md")
         with open(path, "w", encoding="utf-8") as handle:
             handle.write(NESTED)
-        self.assertEqual(verify.project_root_for(path), directory)
+        self.assertEqual(
+            os.path.realpath(verify.project_root_for(path)),
+            os.path.realpath(directory),
+        )
 
 
 if __name__ == "__main__":

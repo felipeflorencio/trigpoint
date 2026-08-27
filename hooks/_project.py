@@ -19,6 +19,11 @@ sys.path.insert(0, os.path.join(PLUGIN_ROOT, "scripts"))
 
 STATE_DIRECTORY = ".trigpoint"
 LEDGER_NAME = "ROADMAP.md"
+# Where a ledger may live, nearest the root first. The CLI was taught to verify
+# a ledger kept in `docs/`; the hooks required one at the root, so the whole
+# automatic half of the tool stayed inert for exactly the layout the CLI had
+# just learned to support, and said nothing about it.
+LEDGER_LOCATIONS = (LEDGER_NAME, os.path.join("docs", LEDGER_NAME))
 PAUSE_FILE = "paused"
 DISABLE_VARIABLE = "TRIGPOINT_DISABLE"
 
@@ -40,7 +45,7 @@ def initialised_root(start_directory: str, environment=None) -> Optional[str]:
         if os.path.isdir(state):
             if os.path.exists(os.path.join(state, PAUSE_FILE)):
                 return None
-            if os.path.exists(os.path.join(current, LEDGER_NAME)):
+            if _ledger_in(current):
                 return current
             return None
         parent = os.path.dirname(current)
@@ -49,6 +54,14 @@ def initialised_root(start_directory: str, environment=None) -> Optional[str]:
         current = parent
 
 
+def _ledger_in(root: str) -> Optional[str]:
+    for relative in LEDGER_LOCATIONS:
+        candidate = os.path.join(root, relative)
+        if os.path.exists(candidate):
+            return candidate
+    return None
+
+
 def ledger_path(start_directory: str, environment=None) -> Optional[str]:
     root = initialised_root(start_directory, environment)
-    return os.path.join(root, LEDGER_NAME) if root else None
+    return _ledger_in(root) if root else None

@@ -106,9 +106,10 @@ on the task line itself or indented beneath it:
 
 ```markdown
 - [x] **1.3** Set `ddl-auto=validate` in the dev profile
-      **Verified:** `./gradlew bootRun`. 2026-08-27
+      **Verified:** `grep -q '^spring.jpa.hibernate.ddl-auto=validate$'
+      src/main/resources/application-dev.properties`. 2026-08-27
 
-- [x] **0.4** Delete stale `bin/`   **Verified:** `ls bin/`. 2026-08-27
+- [x] **0.4** Delete stale `bin/`   **Verified:** `test ! -e bin/`. 2026-08-27
 
 - [x] **0.5** Migrate the production database to the new schema
       **Recorded:** Ran against production at 09:12 UTC, 4,812 rows migrated, verified by

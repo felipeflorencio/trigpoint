@@ -328,5 +328,61 @@ class TheDiagnosisNamesTheActualMistakeTests(unittest.TestCase):
         self.assertIn("**Scope:**", err)
 
 
+DEEPER_HEADING = """# Example - Roadmap
+
+### T1 - Foundation
+
+**Scope:** written correctly, but under a level-three heading
+**Blocked by:** nothing
+
+- [x] **1.1** Ship it
+      **Verified:** `true`. 2026-08-27
+"""
+
+HALF_CONVERTED = """# Example - Roadmap
+
+## T1 - Foundation
+
+**Scope:** a real track whose tasks are not written yet
+**Blocked by:** nothing
+
+## Backlog
+
+- [ ] **2.1** Something not in any track
+- [ ] **2.2** Another one
+"""
+
+
+class TheDiagnosisNamesTheRightMistakeTests(unittest.TestCase):
+    """Telling an author to add a line they already added is worse than silence.
+
+    A track heading must be exactly `##`. Someone using `###` writes a correct
+    `**Scope:**` line, gets no tracks, and is told to add a `**Scope:**` line.
+    Separately, once ANY track parses, the task-shaped count was computed and
+    then thrown away, so a half-converted ledger heard nothing about the tasks
+    sitting outside its tracks.
+    """
+
+    def test_a_deeper_heading_is_not_blamed_on_a_missing_scope_line(self):
+        _, _, err = run_gate(DEEPER_HEADING)
+        self.assertNotIn("Add that line to each track heading", err)
+
+    def test_it_names_the_heading_level_instead(self):
+        _, _, err = run_gate(DEEPER_HEADING)
+        self.assertIn("##", err)
+        self.assertIn("heading", err.lower())
+
+    def test_a_half_converted_ledger_still_hears_about_its_loose_tasks(self):
+        _, _, err = run_gate(HALF_CONVERTED)
+        self.assertIn("2", err)
+        self.assertIn("task-shaped", err)
+
+    def test_both_still_refuse_to_pass(self):
+        for markdown in (DEEPER_HEADING, HALF_CONVERTED):
+            code, out, _ = run_gate(markdown)
+            self.assertEqual(code, check_drift.NOTHING_CHECKED)
+            self.assertNotIn("no problems found", out)
+
+
 if __name__ == "__main__":
     unittest.main()

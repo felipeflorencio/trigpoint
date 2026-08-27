@@ -18,7 +18,7 @@ is followed by an indented `**Verified:**` line carrying the command that was ru
 command printed. That line is not documentation. `check_drift.py` treats its absence as an error
 and fails the build, and it treats an unfilled `{{ placeholder }}` in it the same way.
 
-**An untouched track, stated as untouched.** T5 Publication reads "This track has not started.
+**An untouched track, stated as untouched.** In the snapshot below, T5 Publication reads "This track has not started.
 Nobody has published this plugin anywhere, and nobody has installed it from outside this checkout."
 A ledger that quietly omits the part nobody has done is the failure this format exists to prevent.
 

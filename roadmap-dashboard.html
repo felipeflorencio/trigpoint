@@ -48,7 +48,7 @@ footer { color: var(--muted); font-size: .82rem; border-top: 1px solid var(--rul
 </style>
 </head><body><div class="wrap">
 <p class="headline">This repository now runs its own drift gate in CI, so a ledger that lies about its own evidence fails its own build before it fails anyone else&#x27;s.</p>
-<p class="meta">34 of 36 tasks complete across 6 tracks.</p>
+<p class="meta">35 of 37 tasks complete across 6 tracks.</p>
 <section class="track">
 <h2>T1 Parser and gate</h2>
 <p class="meta">The ledger model, its validation rules, and the read-only CI gate built on them &middot; blocked by nothing &middot; 6 / 6</p>
@@ -138,8 +138,8 @@ footer { color: var(--muted); font-size: .82rem; border-top: 1px solid var(--rul
 </ul></section>
 <section class="track">
 <h2>T6 Continuous verification</h2>
-<p class="meta">The hooks that state the plan at session start and re-prove it at the end of a turn, the approval gate that keeps command execution safe, and the parser fix that made the re-run trustworthy &middot; blocked by nothing &middot; 15 / 17</p>
-<div class="bar"><span style="width:88%"></span></div>
+<p class="meta">The hooks that state the plan at session start and re-prove it at the end of a turn, the approval gate that keeps command execution safe, and the parser fix that made the re-run trustworthy &middot; blocked by nothing &middot; 16 / 18</p>
+<div class="bar"><span style="width:89%"></span></div>
 <ul class="tasks">
 <li><span class="state done">x</span><span class="task-id">6.1</span>Write `scripts/trigpoint_verify.py`: read the command out of each ticked task&#x27;s
 <span class="evidence verified">`python3 -m unittest tests.test_verify -v` -&gt; `Ran 23 tests in 0.001s` / `OK`. 2026-08-26</span>
@@ -187,6 +187,9 @@ footer { color: var(--muted); font-size: .82rem; border-top: 1px solid var(--rul
 </li>
 <li><span class="state done">x</span><span class="task-id">6.15</span>Sweep the release for what nobody had looked at. `/trigpoint-pause` stopped the
 <span class="evidence verified">`python3 -m unittest tests.test_incremental_verify.PausedProjectTests tests.test_vendored_version -v`. 2026-08-27</span>
+</li>
+<li><span class="state done">x</span><span class="task-id">6.16</span>Close everything a third adversarial review found, by the class rather than the
+<span class="evidence verified">`python3 -m unittest tests.test_line_splitting tests.test_shipped_evidence_examples tests.test_guards_at_every_entry tests.test_readme_quotes_are_true -v`. 2026-08-27</span>
 </li>
 <li><span class="state">-</span><span class="task-id">6.5b</span>Prove the INSTALL against a project that is not this one. 6.5a closed the half
 </li>

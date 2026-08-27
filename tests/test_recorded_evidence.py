@@ -365,5 +365,72 @@ class EveryMarkerBoundsTheSpanBeforeItTests(unittest.TestCase):
         self.assertEqual(task_by_id(quoted, "1.1").evidence, "`make test`. 2026-08-27")
 
 
+ODD_BACKTICK_IN_PROSE = """# Example - Roadmap
+
+## T1 - Publication
+
+**Scope:** An assertion whose prose contains one stray backtick
+**Blocked by:** nothing
+
+- [x] **1.1** Publish
+      **Verified:** the ` character is awkward in prose, checked by hand. 2026-08-26
+      **Recorded:** published `felipeflorencio/claude-plugins`. 2026-08-27
+"""
+
+ODD_BACKTICK_IN_TASK_TEXT = """# Example - Roadmap
+
+## T1 - Foundation
+
+**Scope:** A task whose own text carries one stray backtick
+**Blocked by:** nothing
+
+- [x] **2.1** Rename `foo to bar everywhere
+      **Verified:** `make test`. 2026-08-27
+"""
+
+
+class InlineCodeStopsAtTheLineEndingTests(unittest.TestCase):
+    """Markdown inline code cannot span lines. The scanner let it.
+
+    `_boundary_positions` tracked backtick state across the whole joined block,
+    so a single stray backtick opened a span that swallowed every marker below
+    it. Two consequences, both real: review 1's absorption became reachable
+    again, because the `**Recorded:**` marker went invisible and the assertion
+    span ran to the end of the block; and a stray backtick in a task's own text
+    hid that task's `**Verified:**` line, so the static gate accused a task that
+    has evidence sitting right underneath it.
+
+    The class is not "an unbalanced backtick". It is inline-code state
+    surviving a line boundary, which no markdown renderer allows.
+    """
+
+    def test_a_stray_backtick_above_does_not_expose_the_record_to_the_shell(self):
+        self.assertEqual(verify.selectable(parse_ledger(ODD_BACKTICK_IN_PROSE)), [])
+
+    def test_the_record_marker_is_still_seen_after_a_stray_backtick(self):
+        task = task_by_id(ODD_BACKTICK_IN_PROSE, "1.1")
+        self.assertNotIn("**Recorded:**", task.evidence)
+        self.assertNotIn("felipeflorencio", task.evidence)
+
+    def test_a_stray_backtick_in_task_text_does_not_hide_its_own_evidence(self):
+        task = task_by_id(ODD_BACKTICK_IN_TASK_TEXT, "2.1")
+        self.assertIsNotNone(task.evidence)
+        self.assertEqual(task.evidence_kind, "verified")
+
+    def test_that_task_is_not_accused_of_having_no_evidence(self):
+        self.assertEqual(errors_in(ODD_BACKTICK_IN_TASK_TEXT), [])
+
+    def test_its_command_is_still_re_run(self):
+        commands = [c for _, c in verify.selectable(parse_ledger(ODD_BACKTICK_IN_TASK_TEXT))]
+        self.assertEqual(commands, ["make test"])
+
+    def test_a_marker_quoted_in_balanced_inline_code_is_still_ignored(self):
+        quoted = ODD_BACKTICK_IN_TASK_TEXT.replace(
+            "Rename `foo to bar everywhere",
+            "Explain that `**Verified:**` names a command",
+        )
+        self.assertEqual(task_by_id(quoted, "2.1").evidence, "`make test`. 2026-08-27")
+
+
 if __name__ == "__main__":
     unittest.main()
