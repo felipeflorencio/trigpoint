@@ -48,7 +48,7 @@ footer { color: var(--muted); font-size: .82rem; border-top: 1px solid var(--rul
 </style>
 </head><body><div class="wrap">
 <p class="headline">This repository now runs its own drift gate in CI, so a ledger that lies about its own evidence fails its own build before it fails anyone else&#x27;s.</p>
-<p class="meta">31 of 33 tasks complete across 6 tracks.</p>
+<p class="meta">33 of 35 tasks complete across 6 tracks.</p>
 <section class="track">
 <h2>T1 Parser and gate</h2>
 <p class="meta">The ledger model, its validation rules, and the read-only CI gate built on them &middot; blocked by nothing &middot; 6 / 6</p>
@@ -138,8 +138,8 @@ footer { color: var(--muted); font-size: .82rem; border-top: 1px solid var(--rul
 </ul></section>
 <section class="track">
 <h2>T6 Continuous verification</h2>
-<p class="meta">The hooks that state the plan at session start and re-prove it at the end of a turn, the approval gate that keeps command execution safe, and the parser fix that made the re-run trustworthy &middot; blocked by nothing &middot; 12 / 14</p>
-<div class="bar"><span style="width:86%"></span></div>
+<p class="meta">The hooks that state the plan at session start and re-prove it at the end of a turn, the approval gate that keeps command execution safe, and the parser fix that made the re-run trustworthy &middot; blocked by nothing &middot; 14 / 16</p>
+<div class="bar"><span style="width:88%"></span></div>
 <ul class="tasks">
 <li><span class="state done">x</span><span class="task-id">6.1</span>Write `scripts/trigpoint_verify.py`: read the command out of each ticked task&#x27;s
 <span class="evidence verified">`python3 -m unittest tests.test_verify -v` -&gt; `Ran 23 tests in 0.001s` / `OK`. 2026-08-26</span>
@@ -159,7 +159,10 @@ footer { color: var(--muted); font-size: .82rem; border-top: 1px solid var(--rul
 <li><span class="state done">x</span><span class="task-id">6.7</span>Make the hooks survive Windows: `hooks/run-hook.cmd`, a polyglot wrapper that finds
 <span class="evidence verified">`python3 -m unittest tests.test_hook_wiring -v` -&gt; `Ran 20 tests in 0.358s` / `OK`. 2026-08-27</span>
 </li>
-<li><span class="state">-</span><span class="task-id">6.8</span>Verify one non-Claude harness by actually installing it. The Codex, Cursor and
+<li><span class="state done">x</span><span class="task-id">6.8a</span>Check every harness manifest against that vendor&#x27;s published reference rather than
+<span class="evidence verified">`python3 -m unittest tests.test_gemini_commands -v`. 2026-08-27</span>
+</li>
+<li><span class="state">-</span><span class="task-id">6.8b</span>Install one non-Claude harness for real. 6.8a moved the manifests from a guess to a
 </li>
 <li><span class="state done">x</span><span class="task-id">6.9</span>Make evidence honest about what it can prove: `**Verified:**` names a command and
 <span class="evidence verified">`python3 -m unittest tests.test_recorded_evidence -v`. 2026-08-27</span>
@@ -179,7 +182,10 @@ footer { color: var(--muted); font-size: .82rem; border-top: 1px solid var(--rul
 <li><span class="state done">x</span><span class="task-id">6.13</span>Close what the SECOND review found, after the first round of fixes was verified
 <span class="evidence verified">`python3 -m unittest tests.test_recorded_evidence tests.test_incremental_verify tests.test_vendored_version tests.test_manifests -v`. 2026-08-27</span>
 </li>
-<li><span class="state">-</span><span class="task-id">6.5b</span>Prove the grammar and the install against a project that is not this one. 6.5a
+<li><span class="state done">x</span><span class="task-id">6.14</span>Run the tool against real repositories that are not this one, and fix what that
+<span class="evidence verified">`python3 -m unittest tests.test_ledger_not_at_root tests.test_nothing_checked -v`. 2026-08-27</span>
+</li>
+<li><span class="state">-</span><span class="task-id">6.5b</span>Prove the INSTALL against a project that is not this one. 6.5a closed the half
 </li>
 </ul></section>
 <section class="track"><h2>Definition of done</h2>

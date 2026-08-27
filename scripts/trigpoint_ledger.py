@@ -51,6 +51,22 @@ TILDE_FENCE_MARKER = "~~~"
 SHALLOW_CHECKBOX = re.compile(r"^\s*[-*+]\s+\[[ xX]\](\s|$)")
 
 
+def count_task_shaped_lines(markdown_text: str) -> int:
+    """Lines already in task shape, whatever section they happen to sit in.
+
+    A section becomes a track only by carrying a `**Scope:**` line, so a
+    document written with correct `- [x] **0.1** text` lines under plain
+    `## T1 - Foundation` headings parses as nothing at all. Counting these
+    separately is what lets the gate tell that author the one line they are
+    missing, instead of suggesting their file might not be a ledger.
+    """
+    total = 0
+    for _, line in _lines_outside_fences(list(enumerate(markdown_text.splitlines(), start=1))):
+        if TASK_LINE.match(line):
+            total += 1
+    return total
+
+
 def count_checkbox_lines(markdown_text: str) -> int:
     """Every checkbox-looking line outside a fenced block."""
     total = 0

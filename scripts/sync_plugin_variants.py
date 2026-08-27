@@ -116,11 +116,82 @@ def serialise(manifest: Dict) -> str:
     return json.dumps(manifest, indent=2) + "\n"
 
 
+# ------------------------------------------------------- gemini slash commands
+
+
+def _split_frontmatter(markdown_text: str) -> Tuple[str, str]:
+    """The `description:` from a command file's frontmatter, and its body."""
+    description = ""
+    body = markdown_text
+    if markdown_text.startswith("---"):
+        end = markdown_text.find("\n---", 3)
+        if end != -1:
+            frontmatter = markdown_text[3:end]
+            body = markdown_text[end + 4 :]
+            for line in frontmatter.splitlines():
+                if line.strip().lower().startswith("description:"):
+                    description = line.split(":", 1)[1].strip()
+                    break
+    return description, body.strip()
+
+
+def _toml_basic_string(value: str) -> str:
+    return '"{0}"'.format(value.replace("\\", "\\\\").replace('"', '\\"'))
+
+
+def render_command_toml(description: str, body: str) -> str:
+    """One Gemini command file.
+
+    Gemini's reference gives `prompt` as required and `description` as
+    optional. The body goes in a multi-line basic string, so a backslash has to
+    be escaped or TOML reads it as an escape sequence, and a run of three
+    quotes has to be broken or it closes the string early.
+    """
+    escaped = body.replace("\\", "\\\\").replace('"""', '\\"\\"\\"')
+    lines = []
+    if description:
+        lines.append("description = {0}".format(_toml_basic_string(description)))
+    lines.append('prompt = """')
+    lines.append(escaped)
+    lines.append('"""')
+    return "\n".join(lines) + "\n"
+
+
+def command_targets() -> List[Tuple[pathlib.Path, str]]:
+    """A Gemini `.toml` beside every Claude/Cursor `.md` command.
+
+    Gemini reads TOML only, so without these its users get the skill and none
+    of the slash commands. Generated rather than hand-written: a second copy of
+    the same instruction drifts from the first, and the Markdown is the one
+    anybody actually edits.
+
+    They are written to `gemini/commands/` and NOT to `commands/`, where Gemini
+    would actually look. Claude Code's reference gives a command's name as "the
+    file name without extension", which does not say whether it globs `*.md` or
+    everything in the directory, and no Gemini CLI is installed here to test
+    the other side. Dropping a `.toml` beside each `.md` could therefore give
+    Claude Code four duplicate commands whose body is TOML, in exchange for
+    fixing a harness nobody here can run. Staging them keeps the generator
+    honest and the working harness untouched; moving the directory is a
+    one-line change the moment 6.8 can actually be tested.
+    """
+    generated = []
+    for markdown in sorted((REPOSITORY_ROOT / "commands").glob("*.md")):
+        description, body = _split_frontmatter(markdown.read_text(encoding="utf-8"))
+        target = REPOSITORY_ROOT / "gemini" / "commands" / (markdown.stem + ".toml")
+        generated.append((target, render_command_toml(description, body)))
+    return generated
+
+
+def _everything() -> List[Tuple[pathlib.Path, str]]:
+    """Every generated file: the four manifests, then the Gemini commands."""
+    return [(path, serialise(manifest)) for path, manifest in targets()] + command_targets()
+
+
 def check() -> List[str]:
     """Paths whose content differs from what this script would generate."""
     drifted = []
-    for path, manifest in targets():
-        expected = serialise(manifest)
+    for path, expected in _everything():
         if not path.exists() or path.read_text(encoding="utf-8") != expected:
             drifted.append(str(path.relative_to(REPOSITORY_ROOT)))
     return drifted
@@ -129,8 +200,7 @@ def check() -> List[str]:
 def write() -> List[str]:
     """Apply what matches and write regardless, reporting each path."""
     written = []
-    for path, manifest in targets():
-        expected = serialise(manifest)
+    for path, expected in _everything():
         if path.exists() and path.read_text(encoding="utf-8") == expected:
             continue
         os.makedirs(path.parent, exist_ok=True)

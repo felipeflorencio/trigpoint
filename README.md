@@ -278,6 +278,11 @@ was checked. Exit 3 is the one
 worth knowing about: point the gate at a ROADMAP.md that has never been converted and you get a
 diagnostic rather than a green tick.
 
+**Already have a ROADMAP.md?** The most common reason a real one parses as zero tasks is a missing
+`**Scope:**` line. A section becomes a track only by carrying one directly under its heading, so a
+document with correct `## T1 - Foundation` headings and correct `- [x] **0.1** text` task lines
+still reads as empty without it. The gate says so specifically rather than leaving you to guess.
+
 ```
 $ python3 .trigpoint/check_drift.py PLANS.md; echo "exit code: $?"
 PLANS.md: 0 task(s) in 0 track(s) and 0 definition-of-done criteria; 0 ticked, 0 carrying evidence; 33 checkbox line(s) read, 33 not claimed as either.

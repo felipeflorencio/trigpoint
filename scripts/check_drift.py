@@ -23,6 +23,7 @@ try:
     from trigpoint_ledger import (
         Problem,
         count_checkbox_lines,
+        count_task_shaped_lines,
         has_errors,
         parse_ledger,
         validate,
@@ -87,7 +88,7 @@ def describe_coverage(ledger, checkbox_lines: int, ledger_path: str) -> str:
 
 
 def nothing_checked_message(checkbox_lines: int, ledger_path: str,
-                            tracks: int = 0) -> str:
+                            tracks: int = 0, task_shaped: int = 0) -> str:
     """Say why nothing was checked, and say something true.
 
     Refusing to pass is right; asserting a false cause for it is not. A ledger
@@ -101,6 +102,15 @@ def nothing_checked_message(checkbox_lines: int, ledger_path: str,
         if not checkbox_lines
         else " although {0} checkbox line(s) are present".format(checkbox_lines)
     )
+    if task_shaped and not tracks:
+        return (
+            "{0}: {1} line(s) are already task-shaped but sit in no track, so none of them "
+            "was checked{2}. A section becomes a track by carrying a **Scope:** line "
+            "directly under its heading; without one its tasks are invisible. Add that "
+            "line to each track heading. This is not a pass.".format(
+                ledger_path, task_shaped, seen
+            )
+        )
     if tracks:
         return (
             "{0}: {1} track(s) recognised but no tasks written in them{2}. A task line "
@@ -131,7 +141,10 @@ def main(argv: List[str]) -> int:
     sys.stdout.write(describe_coverage(ledger, checkbox_lines, ledger_path) + "\n")
     if ledger.task_count == 0:
         sys.stderr.write(
-            nothing_checked_message(checkbox_lines, ledger_path, len(ledger.tracks))
+            nothing_checked_message(
+                checkbox_lines, ledger_path, len(ledger.tracks),
+                count_task_shaped_lines(text),
+            )
             + "\n"
         )
         return NOTHING_CHECKED

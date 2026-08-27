@@ -1,0 +1,41 @@
+description = "Re-run the commands the ledger records, and review any that have never been approved to run here"
+prompt = """
+Re-prove the ledger rather than trusting it.
+
+```bash
+python3 .trigpoint/trigpoint_verify.py ROADMAP.md
+```
+
+It re-runs the command inside each ticked task's `**Verified:**` line. A task whose command no
+longer exits zero is unticked and given a `**Regressed:**` line recording the exit code and what
+it printed. The original `**Verified:**` line stays: it was true the day it was written, and that
+history is worth keeping.
+
+**`**Recorded:**` lines are never touched.** They state that something happened -- a release
+published, a migration run -- which no re-run can confirm or deny. Their backticks quote names,
+not commands, and nothing here executes them. A task carrying one is not re-proved and is not
+unticked by machine, ever.
+
+**A command that could not be run is not a regression.** If the command could not be started, or
+timed out, the task is left exactly as it was and the reason is reported. Trigpoint got no answer,
+and no answer is not evidence that the claim became false.
+
+**Nothing is ever ticked by this.** A machine can show a claim has become false. Deciding that
+work is finished stays with a person.
+
+## Approving commands
+
+A command the project has not run before is reported as `awaiting approval` and is skipped.
+Show the user each one **in full** and ask whether to approve it. Only on an explicit yes:
+
+```bash
+python3 .trigpoint/trigpoint_verify.py --approve '<the exact command>'
+```
+
+Never approve in bulk, and never approve a command that writes, deploys, deletes or rotates.
+Verify commands are read-only assertions. This gate exists because cloning a repository that
+contains a ledger would otherwise run its author's commands on this machine.
+
+Report unticked tasks, regressions and skipped commands separately and verbatim. If something
+regressed, say so plainly rather than burying it, and do not re-tick it to make the report tidy.
+"""

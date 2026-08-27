@@ -24,8 +24,8 @@ Generated. Do not hand-edit anything between the markers. Run `python3 scripts/b
 | **T3 Installation** | The CLAUDE.md instruction block installer | 3 | 3 | T1 |
 | **T4 Packaging** | The plugin and marketplace manifests, the slash commands, and the skill with its references and templates | 4 | 4 | T1, T2, T3 |
 | **T5 Publication** | The README, the cover art, the published marketplace listing, and a verified real install | 2 | 2 | T4 |
-| **T6 Continuous verification** | The hooks that state the plan at session start and re-prove it at the end of a turn, the approval gate that keeps command execution safe, and the parser fix that made the re-run trustworthy | 14 | 12 | nothing |
-| **Total** | | 33 | 31 | |
+| **T6 Continuous verification** | The hooks that state the plan at session start and re-prove it at the end of a turn, the approval gate that keeps command execution safe, and the parser fix that made the re-run trustworthy | 16 | 14 | nothing |
+| **Total** | | 35 | 33 | |
 <!-- trigpoint:progress:end -->
 
 T1 is the only true blocker: nothing downstream works without a parser and a gate that trusts
@@ -244,9 +244,25 @@ stays with a person.
       obra/superpowers, which uses it to find bash
       **Verified:** `python3 -m unittest tests.test_hook_wiring -v` -> `Ran 20 tests in 0.358s` /
       `OK`. 2026-08-27
-- [ ] **6.8** Verify one non-Claude harness by actually installing it. The Codex, Cursor and
-      Gemini manifests are built to each published shape but none has been installed, so they are
-      a claim rather than a fact until one is
+- [x] **6.8a** Check every harness manifest against that vendor's published reference rather than
+      against memory. Cursor: `.cursor-plugin/plugin.json` is the right path, only `name` is
+      required, components are discovered from default directories, and `sessionStart` and `stop`
+      are both real Cursor hook events carried in the documented `{version, hooks}` shape, so that
+      variant is correct as shipped. Codex: every field used is valid, but the plugin spec has NO
+      `commands` field at all, so the four slash commands cannot reach Codex users by any manifest
+      change. Gemini: `name`, `version` and `description` are required and `contextFileName`
+      optional, all correct, and `skills/<name>/SKILL.md` is the right skill shape, but commands
+      must be TOML with a required `prompt` key and this plugin ships Markdown, so Gemini users
+      currently get the skill and none of the commands
+      **Verified:** `python3 -m unittest tests.test_gemini_commands -v`. 2026-08-27
+- [ ] **6.8b** Install one non-Claude harness for real. 6.8a moved the manifests from a guess to a
+      claim checked against each vendor's own reference, which is strictly better and still not an
+      install. Two things wait on a real one: whether Codex and Cursor load the skill as expected,
+      and whether the generated Gemini command TOML can move from `gemini/commands/` to
+      `commands/` where Gemini looks. It is staged outside that directory deliberately, because
+      Claude Code's reference names a command by "the file name without extension" and does not
+      say whether it globs `*.md` or everything, so a `.toml` beside each `.md` might hand the one
+      verified-working harness four duplicate commands whose body is TOML
 - [x] **6.9** Make evidence honest about what it can prove: `**Verified:**` names a command and
       is re-run, `**Recorded:**` names something that happened and is never re-run. The gate
       demanded a command for every tick, so work with no command got a proxy instead: task 5.2
@@ -297,13 +313,26 @@ stays with a person.
       the hidden ones were the evidence for the findings they were written to close
       **Verified:** `python3 -m unittest tests.test_recorded_evidence tests.test_incremental_verify
       tests.test_vendored_version tests.test_manifests -v`. 2026-08-27
-- [ ] **6.5b** Prove the grammar and the install against a project that is not this one. 6.5a
-      closes the half where a silently disabled checker still printed green, in any repository.
-      What remains cannot be measured from in here: whether the grammar fits ledgers written by
-      people who did not write the parser, and whether the machinery around it survives a
-      different layout. One concrete example waiting there: `verify_ledger` runs every recorded
-      command from the ledger's own directory, which is correct only because `ROADMAP.md` sits at
-      this repository's root
+- [x] **6.14** Run the tool against real repositories that are not this one, and fix what that
+      finds. Two bugs, both invisible from in here because this repository keeps ROADMAP.md at its
+      root: `verify_ledger` took the repository root to be the LEDGER'S OWN directory, so a ledger
+      in `docs/` looked for approvals in `docs/.trigpoint/`, found none, and left the verifier
+      silently inert forever while appearing to work; and once a command was approved it ran with
+      `docs/` as its working directory, so a command resolving from the repository root failed and
+      unticked a TRUE task. A false untick is the one failure this design exists to prevent. The
+      project root is now the nearest ancestor holding `.trigpoint/`. Separately, surveying 490
+      real planning documents on this machine showed the grammar claimed 31 of 18,111 checkbox
+      lines, and that the common near-miss is a document in exactly the right visible shape with
+      no `**Scope:**` line: one real ROADMAP.md had 83 checkboxes and parsed as zero. The gate now
+      names that specific mistake instead of suggesting the file may not be a ledger
+      **Verified:** `python3 -m unittest tests.test_ledger_not_at_root tests.test_nothing_checked
+      -v`. 2026-08-27
+- [ ] **6.5b** Prove the INSTALL against a project that is not this one. 6.5a closed the half
+      where a silently disabled checker still printed green, and 6.14 closed the layout bug and
+      surveyed the grammar against 490 foreign documents. What is left is narrower than it was and
+      still cannot be measured from in here: no full install has ever been performed INTO another
+      repository, so the skill's emit path, the CLAUDE.md block it writes, and the vendored
+      `.trigpoint/` copy are unexercised anywhere but here
 
 ---
 

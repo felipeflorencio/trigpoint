@@ -217,9 +217,8 @@ class TheDiagnosisMustBeTrueTests(unittest.TestCase):
         self.assertEqual(code, check_drift.NOTHING_CHECKED)
         self.assertNotIn("no problems found", out)
 
-    def test_a_file_with_no_tracks_at_all_still_gets_the_unconverted_diagnosis(self):
-        reference = (ROOT / "tests/fixtures/reference_ledger.md").read_text(encoding="utf-8")
-        _, _, err = run_gate(reference)
+    def test_a_file_with_nothing_ledger_shaped_gets_the_unconverted_diagnosis(self):
+        _, _, err = run_gate(PLAIN_CHECKLIST)
         self.assertIn("not a Trigpoint ledger", err)
 
 
@@ -256,6 +255,78 @@ class BrokenInstallIsDiagnosedTests(unittest.TestCase):
         finished = self.run_against_stale_module()
         self.assertNotIn("Traceback", finished.stderr)
         self.assertIn(".trigpoint", finished.stderr)
+
+PLAIN_CHECKLIST = """# Just a checklist
+
+Some notes about the work.
+
+- [ ] buy milk
+- [x] feed the cat
+- [ ] renew the domain
+"""
+
+TRACKS_WITHOUT_SCOPE = """# Achieve Grow - Roadmap
+
+**The top-level reference of work.**
+
+## T1 - Foundation
+
+**Solved.** A fresh database used to fail Hibernate validation.
+
+- [x] **0.1** Replace the initial schema with a curated baseline
+- [x] **0.2** Set `ddl-auto=validate` in the dev profile
+
+## T2 - Security
+
+- [x] **1.1** Unify the Stripe property names
+"""
+
+
+class TheDiagnosisNamesTheActualMistakeTests(unittest.TestCase):
+    """Say what is wrong with THIS file, not what the format is in general.
+
+    Found by running the gate against real ledgers in other repositories on
+    this machine, which is what roadmap item 6.5b asks for. Every one of them
+    that came close used `## T1 - Foundation` headings and `- [x] **0.1**` task
+    lines -- the correct visible shape -- and carried no `**Scope:**` line, so
+    the grammar saw no tracks and therefore no tasks. One real file had 83
+    checkbox lines and parsed as zero.
+
+    Refusing to pass is right. Telling that author their file might not be a
+    ledger, when it is one in every visible respect and is wrong by a single
+    missing line, wastes the refusal.
+    """
+
+    def test_it_counts_the_lines_that_are_already_task_shaped(self):
+        _, _, err = run_gate(TRACKS_WITHOUT_SCOPE)
+        self.assertIn("3", err)
+        self.assertIn("task-shaped", err)
+
+    def test_it_names_the_missing_scope_line(self):
+        _, _, err = run_gate(TRACKS_WITHOUT_SCOPE)
+        self.assertIn("**Scope:**", err)
+
+    def test_it_does_not_suggest_the_file_might_not_be_a_ledger(self):
+        _, _, err = run_gate(TRACKS_WITHOUT_SCOPE)
+        self.assertNotIn("not a Trigpoint ledger", err)
+
+    def test_it_still_refuses_to_pass(self):
+        code, out, _ = run_gate(TRACKS_WITHOUT_SCOPE)
+        self.assertEqual(code, check_drift.NOTHING_CHECKED)
+        self.assertNotIn("no problems found", out)
+
+    def test_a_document_with_no_task_shaped_lines_keeps_the_general_diagnosis(self):
+        _, _, err = run_gate(PLAIN_CHECKLIST)
+        self.assertIn("not a Trigpoint ledger", err)
+        self.assertNotIn("task-shaped", err)
+
+    def test_the_pre_trigpoint_fixture_gets_the_specific_diagnosis(self):
+        """23 of its 33 checkboxes are already task-shaped, so it is one line away."""
+        reference = (ROOT / "tests/fixtures/reference_ledger.md").read_text(encoding="utf-8")
+        _, _, err = run_gate(reference)
+        self.assertIn("task-shaped", err)
+        self.assertIn("**Scope:**", err)
+
 
 if __name__ == "__main__":
     unittest.main()

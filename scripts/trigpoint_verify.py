@@ -298,6 +298,31 @@ def apply_regressions(markdown_text: str, outcomes: Dict[str, Outcome]) -> Tuple
 # ------------------------------------------------------------------ driving
 
 
+def project_root_for(ledger_path: str) -> str:
+    """The directory that OWNS this ledger: the nearest ancestor holding `.trigpoint/`.
+
+    This used to be the ledger file's own directory, which is the same thing
+    only because this repository keeps ROADMAP.md at its root. A ledger in
+    `docs/` therefore looked for approvals in `docs/.trigpoint/`, found none,
+    approved nothing and left the verifier silently inert; and once a command
+    was approved it ran with `docs/` as its working directory, so a command
+    that resolves from the repository root failed and unticked a TRUE task.
+    A false untick is the one failure this design exists to prevent.
+
+    Falling back to the ledger's own directory keeps a checkout that never
+    initialised behaving exactly as before.
+    """
+    ledger_directory = os.path.dirname(os.path.abspath(ledger_path))
+    current = ledger_directory
+    while True:
+        if os.path.isdir(os.path.join(current, STATE_DIRECTORY)):
+            return current
+        parent = os.path.dirname(current)
+        if parent == current:
+            return ledger_directory
+        current = parent
+
+
 def write_atomically(target_path: str, contents: str) -> None:
     """Replace a file's contents without ever leaving it half-written.
 
@@ -357,7 +382,7 @@ def verify_ledger(ledger_path: str, runner: Callable = subprocess.run,
     applied to all of them. Within one pass, over one tree, running the same
     command twice cannot produce two answers worth having.
     """
-    repository_root = os.path.dirname(os.path.abspath(ledger_path))
+    repository_root = project_root_for(ledger_path)
     with open(ledger_path, encoding="utf-8", newline="") as handle:
         original = handle.read()
 
