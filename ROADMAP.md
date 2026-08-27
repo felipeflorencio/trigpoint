@@ -313,21 +313,24 @@ Each criterion is falsifiable on purpose: someone can look at the system and say
 Publication starts once T5 is checked off as well.
 
 - [x] 1. A fresh clone runs `python3 -m unittest discover -s tests` and it exits 0.
-      **Verified:** `python3 -m unittest discover -s tests` -> `Ran 102 tests in 0.027s` / `OK`.
-      2026-08-26
+      **Verified:** `python3 -m unittest discover -s tests`. 2026-08-27
 - [x] 2. `python3 scripts/check_drift.py ROADMAP.md` reports no problems against this
       repository's own ledger.
-      **Verified:** `python3 scripts/check_drift.py ROADMAP.md` -> `ROADMAP.md: no problems
-      found.`; exit code 0. 2026-08-26
+      **Verified:** `python3 scripts/check_drift.py ROADMAP.md`. 2026-08-27
 - [x] 3. Regenerating the ledger and the dashboard from `ROADMAP.md` produces byte-identical
       committed files.
       **Verified:** `python3 scripts/build_dashboard.py --ledger ROADMAP.md --output
-      roadmap-dashboard.html && git diff --exit-code ROADMAP.md roadmap-dashboard.html` -> exit
-      code 0, no output. 2026-08-26
-- [ ] 4. `.github/workflows/checks.yml` has reached `success` on a real push to this repository's
+      roadmap-dashboard.html && git diff --exit-code ROADMAP.md roadmap-dashboard.html`.
+      2026-08-27
+- [x] 4. `.github/workflows/checks.yml` has reached `success` on a real push to this repository's
       remote, not merely locally.
-- [ ] 5. This plugin has been installed from outside this checkout, from a published marketplace
+      **Recorded:** Run 33018737797 reached `success` on a push to `main`, and runs 33064036865
+      and 33064106757 on the push and pull request for `honest-evidence`. A run that already
+      happened cannot be re-established by running anything here. 2026-08-27
+- [x] 5. This plugin has been installed from outside this checkout, from a published marketplace
       listing, at least once.
+      **Recorded:** Installed from the shared marketplace `felipeflorencio/claude-plugins`;
+      `claude plugin details trigpoint` reports source `trigpoint@felipeflorencio`. 2026-08-27
 
 ---
 
