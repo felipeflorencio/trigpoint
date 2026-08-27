@@ -1,3 +1,4 @@
+import subprocess
 import unittest
 import pathlib
 import sys
@@ -181,3 +182,113 @@ class SelectionTests(unittest.TestCase):
         unticked = TICKED.replace("- [x] **1.1**", "- [ ] **1.1**")
         selected = verify.selectable(parse_ledger(unticked))
         self.assertEqual([task.task_id for task, _ in selected], ["1.2"])
+
+
+class CouldNotRunTests(unittest.TestCase):
+    """A command Trigpoint failed to RUN says nothing about whether the claim is true.
+
+    The tool only ever unticks, so a wrong untick corrupts the plan of record
+    while a missed one merely delays a catch. That asymmetry means anything
+    ambiguous must resolve to "leave it alone and say so".
+    """
+
+    def test_a_command_that_could_not_be_started_is_not_a_failure(self):
+        def explode(*args, **kwargs):
+            raise OSError("no shell here")
+
+        outcome = verify.run_command("true", ".", runner=explode)
+        self.assertEqual(outcome.status, verify.COULD_NOT_RUN)
+
+    def test_a_timeout_is_not_a_failure(self):
+        def hang(*args, **kwargs):
+            raise subprocess.TimeoutExpired(cmd="true", timeout=120)
+
+        outcome = verify.run_command("true", ".", runner=hang)
+        self.assertEqual(outcome.status, verify.COULD_NOT_RUN)
+
+    def test_a_passing_command_is_passed(self):
+        outcome = verify.run_command("true", ".", runner=runner_returning(0, "OK"))
+        self.assertEqual(outcome.status, verify.PASSED)
+
+    def test_a_non_zero_exit_is_a_failure(self):
+        outcome = verify.run_command("true", ".", runner=runner_returning(1, "FAILED"))
+        self.assertEqual(outcome.status, verify.FAILED)
+
+    def test_a_command_that_could_not_run_leaves_the_box_ticked(self):
+        outcomes = {"1.1": verify.Outcome(127, "no shell", "2026-08-27", verify.COULD_NOT_RUN)}
+        text, _ = verify.apply_regressions(TICKED, outcomes)
+        self.assertEqual(text, TICKED)
+
+    def test_a_command_that_could_not_run_writes_no_regressed_note(self):
+        outcomes = {"1.1": verify.Outcome(124, "timed out", "2026-08-27", verify.COULD_NOT_RUN)}
+        text, _ = verify.apply_regressions(TICKED, outcomes)
+        self.assertNotIn(verify.REGRESSED_MARKER, text)
+
+    def test_a_command_that_could_not_run_is_reported_rather_than_passed_over(self):
+        outcomes = {"1.1": verify.Outcome(127, "no shell", "2026-08-27", verify.COULD_NOT_RUN)}
+        _, report = verify.apply_regressions(TICKED, outcomes)
+        joined = " ".join(report)
+        self.assertIn("1.1", joined)
+        self.assertIn("could not be run", joined)
+        self.assertNotIn("still passing", joined)
+
+    def test_a_genuine_failure_alongside_one_that_could_not_run_still_unticks(self):
+        outcomes = {
+            "1.1": verify.Outcome(1, "2 tests failed", "2026-08-27", verify.FAILED),
+            "1.2": verify.Outcome(127, "no shell", "2026-08-27", verify.COULD_NOT_RUN),
+        }
+        text, _ = verify.apply_regressions(TICKED, outcomes)
+        self.assertIn("- [ ] **1.1**", text)
+        self.assertIn("- [x] **1.2**", text)
+
+    def test_an_outcome_built_without_a_status_still_reads_from_its_exit_code(self):
+        self.assertEqual(verify.Outcome(0, "", "2026-08-27").status, verify.PASSED)
+        self.assertEqual(verify.Outcome(1, "", "2026-08-27").status, verify.FAILED)
+
+
+class EvidenceWithoutOutputTests(unittest.TestCase):
+    """Evidence records the command, not what the command printed.
+
+    Recorded output was never checked -- verification consults the exit code
+    only -- so a ledger that displayed it was displaying a number nothing
+    stood behind. `Ran 102 tests` sat in this repository's own gate long after
+    the suite had grown past 200. The convention is now the command and the
+    date, and these tests keep the shorter form first-class so nothing
+    reintroduces a requirement to print output.
+    """
+
+    COMMAND_ONLY = """# Example - Roadmap
+
+## T1 - Foundation
+
+**Scope:** Evidence in the current convention
+**Blocked by:** nothing
+
+- [x] **1.1** Write the ledger parser
+      **Verified:** `python3 -m unittest tests.test_ledger_parse -v`. 2026-08-26
+"""
+
+    def test_a_command_only_evidence_line_yields_the_command(self):
+        evidence = "`python3 -m unittest tests.test_ledger_parse -v`. 2026-08-26"
+        self.assertEqual(
+            verify.recorded_command(evidence),
+            "python3 -m unittest tests.test_ledger_parse -v",
+        )
+
+    def test_a_command_only_ledger_still_validates(self):
+        ledger = parse_ledger(self.COMMAND_ONLY)
+        errors = [problem for problem in validate(ledger) if problem.severity == "error"]
+        self.assertEqual(errors, [])
+
+    def test_a_command_only_task_is_still_selected_for_re_running(self):
+        selected = verify.selectable(parse_ledger(self.COMMAND_ONLY))
+        self.assertEqual(
+            [command for _, command in selected],
+            ["python3 -m unittest tests.test_ledger_parse -v"],
+        )
+
+    def test_the_older_arrow_form_is_still_read_correctly(self):
+        ledger = parse_ledger(TICKED)
+        errors = [problem for problem in validate(ledger) if problem.severity == "error"]
+        self.assertEqual(errors, [])
+        self.assertEqual(len(verify.selectable(ledger)), 2)

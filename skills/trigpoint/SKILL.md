@@ -165,7 +165,15 @@ cp "${CLAUDE_PLUGIN_ROOT}/scripts/trigpoint_ledger.py" \
    "${CLAUDE_PLUGIN_ROOT}/scripts/check_drift.py" \
    "${CLAUDE_PLUGIN_ROOT}/scripts/trigpoint_verify.py" \
    .trigpoint/
+python3 -c "import json,sys; print(json.load(open(sys.argv[1]))['version'])" \
+   "${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json" > .trigpoint/version
 ```
+
+The version stamp is not decoration. The hooks always run the plugin's own code, while the gate
+this block tells the user to run is the copy in `.trigpoint/`. After a `plugin update` those two
+disagree until someone re-copies, and a stale gate rejects evidence the fresh hooks just told the
+agent to write. The stamp is what lets the session-start hook say so instead of leaving both sides
+confident and contradictory.
 
 Write the instruction block into the target repository's own `CLAUDE.md`:
 
@@ -191,7 +199,8 @@ and nothing is ever run. Tell the user that in one sentence when you report the 
 with `/trigpoint-pause` if they want it to stop.
 
 From then on, at the end of a working turn, the commands recorded in `**Verified:**` lines are
-re-run and anything that stopped passing is unticked with a `**Regressed:**` note. Each distinct
+re-run and anything that stopped passing is unticked with a `**Regressed:**` note. `**Recorded:**`
+lines are never re-run: they state that something happened, which no re-run can confirm or deny. Each distinct
 command must be approved once before it will run, which is what `/trigpoint-verify` is for.
 **Nothing is ever ticked automatically**, so writing an honest `**Verified:**` line remains the
 only way a box gets ticked.
@@ -201,7 +210,8 @@ only way a box gets ticked.
 | Thought | Reality |
 | --- | --- |
 | "The audit found nothing, so the repo is clean" | A lane that did not run proves nothing. Absence of findings in an unrun lane is not a clean result, it is an unsearched area. Name the unrun lanes in the ledger. |
-| "I will tick this box, the change is obvious" | The box needs the command and its output on a `**Verified:**` line. Obvious is not evidence, and the build refuses a tick without one. |
+| "I will tick this box, the change is obvious" | The box needs a `**Verified:**` line carrying the command, or a `**Recorded:**` line stating what happened. Obvious is not evidence, and the build refuses a tick without one. |
+| "There is no command for this, so I will find something that runs" | That produces a proxy: something runnable that sits near the claim without proving it, and passes whether or not the claim is true. Use `**Recorded:**` and state what happened. |
 | "The user did not answer, so I will pick the lanes myself" | Silence runs all seven. Over-cover, never under-cover. |
 | "The audit is slow and expensive, just skip it and use the README" | The README is a claim, not evidence. The honesty lane exists precisely because READMEs describe intended behaviour, not actual behaviour. Run the audit and say why in one sentence. |
 | "The user said not to ask a bunch of questions, so I will infer the answers" | An instruction to move faster is not an answer to any of the four. Ask them, one per message, and keep each one short. |

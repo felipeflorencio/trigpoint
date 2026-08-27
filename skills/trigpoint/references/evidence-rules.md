@@ -56,20 +56,65 @@ same evidence requirement, and here the requirement is mechanical.
 
 ```markdown
 - [x] **1.2** Set `ddl-auto=validate` in the dev profile
-      **Verified:** `./gradlew bootRun` -> started, validation passed. 2026-08-27
+      **Verified:** `./gradlew bootRun`. 2026-08-27
 ```
 
-**A `[x]` with no `**Verified:**` line is a hard error and the build refuses.**
+**A `[x]` with no evidence line is a hard error and the build refuses.** Evidence means a
+`**Verified:**` line or a `**Recorded:**` line; which one, and why it matters, is the next section.
 This is not
 configurable. The moment it can be turned off, someone turns it off, and automatic mode stops being
 safe.
 
-The line records **the command that was actually run and what came back**. Not a description of the
-change, not "confirmed working", not the intent. If you did not run a command, the box is not
-ticked. The line may be short, so a trivial task costs one line:
+The line records **the command that was actually run**, in backticks, and the date it was proven.
+Not a description of the change, not "confirmed working", not the intent.
+
+## Two kinds of evidence, and why
+
+Some work cannot be re-checked by running anything. A release was published, a migration ran
+against production, an install was performed from outside the checkout. These happened once, on a
+date, and no command re-establishes them.
+
+A gate that demands a command for such work does not get evidence. It gets a **proxy**: something
+runnable that sits near the claim without proving it. This repository shipped one. Task 5.2 said
+"publish the plugin to a marketplace and verify a real install", and what stood behind it was a
+`curl` showing a JSON file still returns 200. That command passes forever whether or not anybody
+ever published anything, and it also unticks the task the moment you work offline. Manufactured
+evidence is the failure this whole tool exists to prevent, and the gate was manufacturing it.
+
+So there are two markers, and choosing between them is the author's judgement:
 
 ```markdown
-- [x] **0.4** Delete stale `bin/`   **Verified:** `ls bin/` -> absent. 2026-08-27
+- [x] **1.2** Set `ddl-auto=validate` in the dev profile
+      **Verified:** `./gradlew bootRun`. 2026-08-27
+
+- [x] **5.2** Publish the plugin to a marketplace and install it from outside this checkout
+      **Recorded:** Published to `felipeflorencio/claude-plugins`; `claude plugin update
+      trigpoint` reported 0.1.0 to 0.2.0 on a machine outside this checkout. 2026-08-27
+```
+
+**`**Verified:**` is an assertion.** It names a command. The command is re-run at the end of a
+working turn, and a box whose command stops passing is unticked by machine.
+
+**`**Recorded:**` is a witnessed fact.** It states what happened and when. Nothing re-runs it,
+nothing unticks it, and its backticks quote names rather than commands. It is weaker on purpose:
+it rests entirely on the honesty of whoever wrote it, which is exactly the right place to put work
+whose truth a machine cannot check.
+
+**Never invent a command to satisfy the gate.** If the only command you can think of would pass
+regardless of whether the claim is true, that is not evidence and `**Recorded:**` is the honest
+line. A tick still needs one of the two: a bare `[x]` is a hard error either way.
+
+It does not record what the command printed. Verification re-runs the command and consults its
+exit code; nothing ever re-reads the recorded output, so an output kept in the ledger is a number
+nothing stands behind. This repository's own gate carried `Ran 102 tests` long after the suite had
+passed 200, and every check still said the ledger was clean. Ledgers written before this rule keep
+their `-> output` tail and are read correctly, because the command is taken from the first
+backticked span.
+
+The line is therefore short, and a trivial task costs one line:
+
+```markdown
+- [x] **0.4** Delete stale `bin/`   **Verified:** `ls bin/`. 2026-08-27
 ```
 
 ## Two operational guards

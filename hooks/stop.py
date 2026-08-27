@@ -21,6 +21,8 @@ from _project import ledger_path  # noqa: E402
 
 import trigpoint_verify  # noqa: E402
 
+from trigpoint_ledger import count_checkbox_lines, parse_ledger  # noqa: E402
+
 
 def summarise(report, awaiting) -> str:
     parts = [line for line in report if "unticked" in line or "not found" in line]
@@ -34,9 +36,28 @@ def summarise(report, awaiting) -> str:
     return "Trigpoint: " + "; ".join(parts) if parts else ""
 
 
+def nothing_parsed_message(checkbox_lines: int) -> str:
+    seen = (
+        ""
+        if not checkbox_lines
+        else " although {0} checkbox line(s) are present".format(checkbox_lines)
+    )
+    return (
+        "Trigpoint: ROADMAP.md parsed as zero tasks{0}. NOTHING was re-proved this "
+        "turn. Silence here would have read as a clean ledger.".format(seen)
+    )
+
+
 def main() -> int:
     path = ledger_path(os.getcwd())
     if path is None:
+        return 0
+
+    with open(path, encoding="utf-8") as handle:
+        text = handle.read()
+    if parse_ledger(text).task_count == 0:
+        print(json.dumps({"systemMessage": nothing_parsed_message(
+            count_checkbox_lines(text))}), flush=True)
         return 0
 
     report, awaiting = trigpoint_verify.verify_ledger(path)

@@ -24,13 +24,16 @@ BLOCK_BODY = """## The ledger
 `ROADMAP.md` is this repository's plan of record. Read it before starting work.
 
 - Work only on tracks whose **Blocked by** is satisfied.
-- A box is ticked ONLY after its verification has actually run. Record the
-  command and its output on a `**Verified:**` line. Never tick on assumption.
+- A box is ticked ONLY after its evidence actually exists.
+  Never tick on assumption.
 - Work discovered mid-flight that is not in the ledger gets ADDED to the right
   track when it is found, not done silently.
 - A finding that contradicts the ledger is raised, not quietly edited away.
 - After any tick or addition, run `python3 .trigpoint/build_dashboard.py`.
   The progress table and the dashboard are generated. Never hand-edit them.
+- Evidence is a `**Verified:**` line naming a command, which is re-run and can
+  untick its box, or a `**Recorded:**` line stating what happened, for work no
+  command can re-check. Never invent a command to satisfy the gate.
 - `python3 .trigpoint/check_drift.py` exits non-zero when a box is ticked with
   no evidence recorded.
 

@@ -11,7 +11,9 @@ done.
 - **Counts are generated, never typed.** The progress table and the dashboard are rewritten from
   the ledger between markers. Nothing derived has a hand-written copy to disagree with.
 - **A ticked task must carry its proof.** A `**Verified:**` line records the command that was run
-  and what it printed. A tick without one is an error, not a warning.
+  and is re-run later; a `**Recorded:**` line states what happened, for work no command can
+  re-check, and is never re-run. A tick with neither is an error, not a warning. Never invent a
+  command to satisfy the gate.
 - **Proofs are re-run.** At the end of a working turn the recorded commands run again, and a task
   whose command stopped passing unticks itself with a `**Regressed:**` note. An optimistic tick
   does not survive contact with the next turn.

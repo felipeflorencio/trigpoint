@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import pathlib
+import re
 import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
@@ -33,6 +34,29 @@ def shipped_markdown_paths() -> list:
                 continue
             collected[relative_name] = candidate
     return [collected[name] for name in sorted(collected)]
+
+
+class TestFileLayoutTest(unittest.TestCase):
+    """No test class may be defined below `unittest.main()`.
+
+    `unittest discover` imports the module and collects everything, so CI stays
+    green while `python3 tests/test_x.py` silently runs a subset. Three files
+    drifted into that shape, and the hidden classes were the evidence for the
+    very findings they had been written to close.
+    """
+
+    GUARD = re.compile(r"^if __name__ == .__main__.:", re.MULTILINE)
+    CLASS = re.compile(r"^class ", re.MULTILINE)
+
+    def test_no_test_class_is_defined_after_the_main_guard(self):
+        root = pathlib.Path(__file__).resolve().parent
+        offenders = []
+        for path in sorted(root.glob("test_*.py")):
+            source = path.read_text(encoding="utf-8")
+            guard = self.GUARD.search(source)
+            if guard and self.CLASS.search(source, guard.end()):
+                offenders.append(path.name)
+        self.assertEqual(offenders, [])
 
 
 class ManifestTest(unittest.TestCase):

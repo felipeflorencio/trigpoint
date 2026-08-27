@@ -26,21 +26,80 @@ METADATA_LINE = re.compile(r"^\*\*[^*]+:\*\*")
 HEADING_LINE = re.compile(r"^#")
 
 EVIDENCE_MARKER = "**Verified:**"
+RECORD_MARKER = "**Recorded:**"
+
+VERIFIED = "verified"
+RECORDED = "recorded"
+
+EVIDENCE_MARKERS = ((EVIDENCE_MARKER, VERIFIED), (RECORD_MARKER, RECORDED))
+
+# A regression note follows the evidence it contradicts and carries backticks of
+# its own, so it ends the span before it without ever starting one.
+REGRESSED_MARKER = "**Regressed:**"
+SPAN_BOUNDARIES = EVIDENCE_MARKERS + ((REGRESSED_MARKER, None),)
+
+FENCE_MARKER = "```"
+TILDE_FENCE_MARKER = "~~~"
+
+# A deliberately weaker second reader, used only to answer one question the
+# grammar cannot answer about itself: how much of this document did the grammar
+# fail to claim? It is broader than TASK_LINE on purpose -- any bullet, any
+# case, no trailing text required -- so the count can never fall below what the
+# grammar claimed, and it keeps its own fence handling rather than sharing
+# `_lines_outside_fences`, because a fence bug that hides tasks from the parser
+# must not hide the same tasks from the counter as well.
+SHALLOW_CHECKBOX = re.compile(r"^\s*[-*+]\s+\[[ xX]\](\s|$)")
+
+
+def count_checkbox_lines(markdown_text: str) -> int:
+    """Every checkbox-looking line outside a fenced block."""
+    total = 0
+    open_marker = None
+    for line in markdown_text.splitlines():
+        stripped = line.strip()
+        if stripped.startswith(FENCE_MARKER):
+            marker = FENCE_MARKER
+        elif stripped.startswith(TILDE_FENCE_MARKER):
+            marker = TILDE_FENCE_MARKER
+        else:
+            marker = None
+        if marker is not None:
+            if open_marker is None:
+                open_marker = marker
+            elif marker == open_marker:
+                open_marker = None
+            continue
+        if open_marker is None and SHALLOW_CHECKBOX.match(line):
+            total += 1
+    return total
 DONE_HEADING_PREFIX = "definition of done"
 PLACEHOLDER_OPEN = "{{"
 PLACEHOLDER_CLOSE = "}}"
 PLACEHOLDER_BODY = re.compile(r"^[A-Za-z -]+$")
-FENCE_MARKER = "```"
-TILDE_FENCE_MARKER = "~~~"
 
 
 @dataclass
 class Task:
+    """One planned unit of work and whatever stands behind its tick.
+
+    `evidence_kind` separates the two honest ways a box earns its tick.
+    VERIFIED evidence names a command: a machine re-runs it, and a machine may
+    untick the box when it stops passing. RECORDED evidence names something
+    that happened and was witnessed -- a release published, a migration run, an
+    install performed. Re-running it is not possible, so nothing re-runs it and
+    no machine ever unticks it.
+
+    The distinction exists because demanding a command for work that has none
+    does not produce evidence, it produces a proxy that stands near the claim
+    without proving it and passes forever either way.
+    """
+
     task_id: str
     text: str
     done: bool
     evidence: Optional[str]
     line_number: int
+    evidence_kind: Optional[str] = None
 
 
 @dataclass
@@ -305,6 +364,37 @@ def _extract_tasks(numbered_lines: List[NumberedLine]) -> List[Task]:
     return tasks
 
 
+def _boundary_positions(text, markers):
+    """Every occurrence of any marker outside an inline code span, in order.
+
+    One scan for all markers, rather than one scan per marker. Scanning per
+    marker can only ever report each one's first occurrence, and a span needs
+    the next boundary of ANY kind, whichever that turns out to be.
+    """
+    found = []
+    index = 0
+    length = len(text)
+    open_run = 0
+    while index < length:
+        if text[index] == "`":
+            run = 0
+            while index + run < length and text[index + run] == "`":
+                run += 1
+            if open_run == 0:
+                open_run = run
+            elif run == open_run:
+                open_run = 0
+            index += run
+            continue
+        if open_run == 0:
+            for marker, kind in markers:
+                if text.startswith(marker, index):
+                    found.append((index, len(marker), kind))
+                    break
+        index += 1
+    return found
+
+
 def _marker_outside_inline_code(text: str, marker: str) -> int:
     """Index of the first `marker` that is not inside an inline code span, or -1.
 
@@ -337,16 +427,60 @@ def _marker_outside_inline_code(text: str, marker: str) -> int:
     return -1
 
 
+def _evidence_spans(block: str) -> List[Tuple[str, str]]:
+    """Each evidence marker's own text, ending where the NEXT marker begins.
+
+    A marker owns the text up to the next marker, never to the end of the
+    block. Slicing to the end let a `**Verified:**` line holding prose absorb
+    the `**Recorded:**` line beneath it, keep the VERIFIED kind, and offer the
+    record's first backticked span as a command to run. The backticks in a
+    record quote repository and product names, so that turned
+    `felipeflorencio/claude-plugins` into something the shell was asked to
+    execute, and unticked a true task when the shell could not find it.
+
+    Every OCCURRENCE bounds the span before it, not merely the first of each
+    marker. Bounding only the first left the same hole open one marker further
+    along: a record, a blanked assertion and a second record put the last span
+    back on a run to the end of the block. Fixing the shape that was reported
+    rather than the class that produced it left the incident reproducible.
+    """
+    found = _boundary_positions(block, SPAN_BOUNDARIES)
+
+    spans: List[Tuple[str, str]] = []
+    for index, entry in enumerate(found):
+        position, marker_length, kind = entry
+        if kind is None:
+            continue
+        end = found[index + 1][0] if index + 1 < len(found) else len(block)
+        spans.append((kind, block[position + marker_length : end]))
+    return spans
+
+
 def _apply_evidence(task: Task, block_lines: List[str]) -> Task:
+    """Attach whichever evidence the task block carries, and its kind.
+
+    A block carrying both is read as VERIFIED: a command that can be re-run is
+    the stronger claim, and the record beside it loses nothing by being kept as
+    prose. A `**Verified:**` marker with nothing behind it is not a claim at
+    all, so it falls through to the record rather than standing in its way.
+    """
     block = "\n".join(block_lines)
-    position = _marker_outside_inline_code(block, EVIDENCE_MARKER)
-    if position != -1:
-        evidence = block[position + len(EVIDENCE_MARKER) :]
-        task.evidence = " ".join(evidence.split()) or None
+    by_kind: dict = {}
+    for kind, span in _evidence_spans(block):
+        cleaned = " ".join(span.split())
+        if cleaned and kind not in by_kind:
+            by_kind[kind] = cleaned
+    for _, kind in EVIDENCE_MARKERS:
+        evidence = by_kind.get(kind)
+        if evidence:
+            task.evidence = evidence
+            task.evidence_kind = kind
+            break
+
     first_line = block_lines[0] if block_lines else ""
-    first_line_marker = _marker_outside_inline_code(first_line, EVIDENCE_MARKER)
-    if first_line_marker != -1:
-        first_line = first_line[:first_line_marker]
+    boundaries = _boundary_positions(first_line, SPAN_BOUNDARIES)
+    if boundaries:
+        first_line = first_line[: boundaries[0][0]]
     task.text = " ".join(first_line.split())
     return task
 
@@ -389,9 +523,10 @@ def validate(ledger: Ledger) -> List[Problem]:
                         severity="error",
                         line_number=task.line_number,
                         message=(
-                            "task {0} is ticked with no **Verified:** line. "
-                            "Record the command that was run and what it printed, "
-                            "or untick it.".format(task.task_id)
+                            "task {0} is ticked with nothing behind it. Add a "
+                            "**Verified:** line naming the command that was "
+                            "run, or a **Recorded:** line stating what "
+                            "happened and when, or untick it.".format(task.task_id)
                         ),
                     )
                 )
@@ -401,10 +536,10 @@ def validate(ledger: Ledger) -> List[Problem]:
                         severity="error",
                         line_number=task.line_number,
                         message=(
-                            "task {0} is ticked but its **Verified:** line still "
+                            "task {0} is ticked but its evidence line still "
                             "contains an unfilled {{{{ placeholder }}}}. Record the "
-                            "command that was actually run and what it printed, "
-                            "or untick it.".format(task.task_id)
+                            "command that was actually run, or what actually "
+                            "happened, or untick it.".format(task.task_id)
                         ),
                     )
                 )

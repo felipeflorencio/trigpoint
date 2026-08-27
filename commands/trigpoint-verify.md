@@ -13,6 +13,15 @@ longer exits zero is unticked and given a `**Regressed:**` line recording the ex
 it printed. The original `**Verified:**` line stays: it was true the day it was written, and that
 history is worth keeping.
 
+**`**Recorded:**` lines are never touched.** They state that something happened -- a release
+published, a migration run -- which no re-run can confirm or deny. Their backticks quote names,
+not commands, and nothing here executes them. A task carrying one is not re-proved and is not
+unticked by machine, ever.
+
+**A command that could not be run is not a regression.** If the command could not be started, or
+timed out, the task is left exactly as it was and the reason is reported. Trigpoint got no answer,
+and no answer is not evidence that the claim became false.
+
 **Nothing is ever ticked by this.** A machine can show a claim has become false. Deciding that
 work is finished stays with a person.
 

@@ -27,6 +27,22 @@ class InstallBlockTest(unittest.TestCase):
         self.assertIn("**Verified:**", block)
         self.assertIn("Never tick on assumption", block)
 
+    def test_block_carries_both_evidence_kinds(self) -> None:
+        """The block is the rule an agent reads inside the user's own repo.
+
+        It once stated two incompatible rules at the same time: an older bullet
+        demanding the command and its output, and a newer one describing the
+        two kinds. Deleting either left the suite green.
+        """
+        block = install_block.render_block("automatic")
+        self.assertIn("**Recorded:**", block)
+        self.assertIn("re-run", block)
+        self.assertNotIn("and its output", block)
+
+    def test_block_never_demands_the_output_of_a_command(self) -> None:
+        block = install_block.render_block("automatic")
+        self.assertNotIn("what it printed", block)
+
     def test_block_carries_the_discovered_work_rule(self) -> None:
         self.assertIn("ADDED", install_block.render_block("automatic"))
 
