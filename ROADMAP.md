@@ -24,8 +24,8 @@ Generated. Do not hand-edit anything between the markers. Run `python3 scripts/b
 | **T3 Installation** | The CLAUDE.md instruction block installer | 3 | 3 | T1 |
 | **T4 Packaging** | The plugin and marketplace manifests, the slash commands, and the skill with its references and templates | 4 | 4 | T1, T2, T3 |
 | **T5 Publication** | The README, the cover art, the published marketplace listing, and a verified real install | 2 | 2 | T4 |
-| **T6 Continuous verification** | The hooks that state the plan at session start and re-prove it at the end of a turn, the approval gate that keeps command execution safe, and the parser fix that made the re-run trustworthy | 12 | 10 | nothing |
-| **Total** | | 31 | 29 | |
+| **T6 Continuous verification** | The hooks that state the plan at session start and re-prove it at the end of a turn, the approval gate that keeps command execution safe, and the parser fix that made the re-run trustworthy | 13 | 11 | nothing |
+| **Total** | | 32 | 30 | |
 <!-- trigpoint:progress:end -->
 
 T1 is the only true blocker: nothing downstream works without a parser and a gate that trusts
@@ -270,6 +270,19 @@ stays with a person.
       they point the gate at a ROADMAP they have not converted. It now exits 3 and names the
       checkbox lines it could see, and both hooks say so rather than staying quiet
       **Verified:** `python3 -m unittest tests.test_nothing_checked -v`. 2026-08-27
+- [x] **6.12** Close what an adversarial pre-release review found. The worst was in 6.9's own
+      parser: evidence was sliced from its marker to the END of the task block, so a
+      `**Verified:**` line holding prose absorbed the `**Recorded:**` line beneath it, kept the
+      VERIFIED kind, and offered the record's first backticked span as a command. Trigpoint
+      selected `felipeflorencio/claude-plugins` to run and unticked a true task when the shell
+      could not find it. That is the shape of a ledger halfway through migrating from 0.2.0.
+      Also: the ledger is now written through a temporary file and `os.replace`, so the
+      per-regression write cannot leave it half-written; a stale `.trigpoint/` is detected by
+      version stamp instead of silently rejecting evidence the fresh hooks ask for; a
+      half-updated install exits 2 rather than claiming the ledger has errors; and exit 3 no
+      longer asserts a false cause for a ledger whose tracks parsed but whose tasks are unwritten
+      **Verified:** `python3 -m unittest tests.test_recorded_evidence tests.test_incremental_verify
+      tests.test_nothing_checked tests.test_vendored_version -v`. 2026-08-27
 - [ ] **6.5b** Prove the grammar and the install against a project that is not this one. 6.5a
       closes the half where a silently disabled checker still printed green, in any repository.
       What remains cannot be measured from in here: whether the grammar fits ledgers written by

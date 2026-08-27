@@ -12,10 +12,11 @@ from __future__ import annotations
 import json
 import os
 import sys
+from typing import Optional
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from _project import ledger_path  # noqa: E402
+from _project import PLUGIN_ROOT, STATE_DIRECTORY, initialised_root, ledger_path  # noqa: E402
 
 from trigpoint_ledger import (  # noqa: E402
     RECORDED,
@@ -28,13 +29,55 @@ from trigpoint_render import heading_text  # noqa: E402
 from trigpoint_verify import recorded_command  # noqa: E402
 
 MAX_TRACKS_LISTED = 12
+VERSION_FILE = "version"
+
+
+def plugin_version() -> str:
+    """The version of the plugin these hooks were shipped in."""
+    manifest = os.path.join(PLUGIN_ROOT, ".claude-plugin", "plugin.json")
+    try:
+        with open(manifest, encoding="utf-8") as handle:
+            return str(json.load(handle).get("version", "")) or "unknown"
+    except (OSError, ValueError):
+        return "unknown"
+
+
+def vendored_version_warning(start_directory: str) -> str:
+    """Say so when the copies in `.trigpoint/` are older than the plugin.
+
+    The hooks run the plugin's code; the gate the user is told to run is a copy
+    vendored at install time. When those disagree, the session-start hook can
+    be teaching a rule the vendored gate rejects, and nothing on either side
+    knows. Only the mismatch is reported here: re-copying is the user's call,
+    because it overwrites files in their repository.
+    """
+    root = initialised_root(start_directory)
+    if root is None:
+        return ""
+    running = plugin_version()
+    stamp_path = os.path.join(root, STATE_DIRECTORY, VERSION_FILE)
+    try:
+        with open(stamp_path, encoding="utf-8") as handle:
+            vendored = handle.read().strip()
+    except OSError:
+        vendored = ""
+    if vendored == running:
+        return ""
+    return (
+        "TRIGPOINT WARNING: the scripts vendored in .trigpoint/ are from {0}, and this "
+        "plugin is {1}. The gate you are told to run is the vendored copy, so it may "
+        "reject evidence these hooks tell you to write. Re-copy the five scripts from "
+        "the plugin into .trigpoint/, or re-run the trigpoint skill.".format(
+            vendored or "an unrecorded version", running
+        )
+    )
 
 
 def _open_tracks(ledger):
     return [track for track in ledger.tracks if track.done_count < track.task_count]
 
 
-def build_state(markdown_text: str) -> str:
+def build_state(markdown_text: str, start_directory: Optional[str] = None) -> str:
     ledger = parse_ledger(markdown_text)
     total = ledger.task_count
     done = ledger.done_count
@@ -108,6 +151,11 @@ def build_state(markdown_text: str) -> str:
         lines.append("The ledger currently has {0} error(s). Fix them before adding "
                      "work; run the drift gate to see them.".format(len(errors)))
 
+    warning = vendored_version_warning(start_directory) if start_directory else ""
+    if warning:
+        lines.append("")
+        lines.append(warning)
+
     lines.append("")
     lines.append(
         "Ticking rule: a box is ticked only with evidence. Never on assumption. Use a "
@@ -132,7 +180,7 @@ def main() -> int:
     print(json.dumps({
         "hookSpecificOutput": {
             "hookEventName": "SessionStart",
-            "additionalContext": build_state(markdown_text),
+            "additionalContext": build_state(markdown_text, os.getcwd()),
         }
     }), flush=True)
     return 0

@@ -165,7 +165,15 @@ cp "${CLAUDE_PLUGIN_ROOT}/scripts/trigpoint_ledger.py" \
    "${CLAUDE_PLUGIN_ROOT}/scripts/check_drift.py" \
    "${CLAUDE_PLUGIN_ROOT}/scripts/trigpoint_verify.py" \
    .trigpoint/
+python3 -c "import json,sys; print(json.load(open(sys.argv[1]))['version'])" \
+   "${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json" > .trigpoint/version
 ```
+
+The version stamp is not decoration. The hooks always run the plugin's own code, while the gate
+this block tells the user to run is the copy in `.trigpoint/`. After a `plugin update` those two
+disagree until someone re-copies, and a stale gate rejects evidence the fresh hooks just told the
+agent to write. The stamp is what lets the session-start hook say so instead of leaving both sides
+confident and contradictory.
 
 Write the instruction block into the target repository's own `CLAUDE.md`:
 

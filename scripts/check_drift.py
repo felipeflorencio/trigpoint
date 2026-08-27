@@ -19,13 +19,24 @@ from typing import List
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
-from trigpoint_ledger import (
-    Problem,
-    count_checkbox_lines,
-    has_errors,
-    parse_ledger,
-    validate,
-)
+try:
+    from trigpoint_ledger import (
+        Problem,
+        count_checkbox_lines,
+        has_errors,
+        parse_ledger,
+        validate,
+    )
+except ImportError as import_error:  # a half-updated .trigpoint/ copy
+    # Exit 1 means "your ledger has errors" and CI would report a broken
+    # install as a broken plan. The scripts are vendored and refreshed by hand,
+    # so copying some of them and not others is a real state a user reaches.
+    sys.stderr.write(
+        "cannot run the drift gate: the copied Trigpoint scripts do not match each "
+        "other ({0}). Re-copy all five scripts into .trigpoint/ from the plugin, or "
+        "re-run the trigpoint skill.\n".format(import_error)
+    )
+    raise SystemExit(2)
 
 DEFAULT_LEDGER = "ROADMAP.md"
 NOTHING_CHECKED = 3
@@ -57,25 +68,45 @@ def report(problems: List[Problem], ledger_path: str) -> str:
 def describe_coverage(ledger, checkbox_lines: int, ledger_path: str) -> str:
     """State what was actually read, so a pass is never a bare assertion."""
     ticked = [task for track in ledger.tracks for task in track.tasks if task.done]
+    criteria = len(ledger.done_criteria)
+    unaccounted = max(0, checkbox_lines - ledger.task_count - criteria)
     return (
-        "{0}: {1} task(s) in {2} track(s); {3} ticked, {4} carrying evidence; "
-        "{5} checkbox line(s) seen.".format(
+        "{0}: {1} task(s) in {2} track(s) and {3} definition-of-done criteria; "
+        "{4} ticked, {5} carrying evidence; {6} checkbox line(s) read, "
+        "{7} not claimed as either.".format(
             ledger_path,
             ledger.task_count,
             len(ledger.tracks),
+            criteria,
             len(ticked),
             sum(1 for task in ticked if task.evidence),
             checkbox_lines,
+            unaccounted,
         )
     )
 
 
-def nothing_checked_message(checkbox_lines: int, ledger_path: str) -> str:
+def nothing_checked_message(checkbox_lines: int, ledger_path: str,
+                            tracks: int = 0) -> str:
+    """Say why nothing was checked, and say something true.
+
+    Refusing to pass is right; asserting a false cause for it is not. A ledger
+    whose tracks were recognised but whose tasks are not written yet was told
+    the file might not be a ledger at all, one line under a summary saying a
+    track had been found. The track count separates the two cases, and only
+    one of them is a document this parser failed to understand.
+    """
     seen = (
         ""
         if not checkbox_lines
         else " although {0} checkbox line(s) are present".format(checkbox_lines)
     )
+    if tracks:
+        return (
+            "{0}: {1} track(s) recognised but no tasks written in them{2}. A task line "
+            "reads `- [ ] **1.1** text`. There is nothing here to check yet, so this is "
+            "not a pass.".format(ledger_path, tracks, seen)
+        )
     return (
         "{0}: no tasks parsed{1}. Either this file is not a Trigpoint ledger, or the "
         "parser has stopped recognising it. A section becomes a track by carrying a "
@@ -99,7 +130,10 @@ def main(argv: List[str]) -> int:
     checkbox_lines = count_checkbox_lines(text)
     sys.stdout.write(describe_coverage(ledger, checkbox_lines, ledger_path) + "\n")
     if ledger.task_count == 0:
-        sys.stderr.write(nothing_checked_message(checkbox_lines, ledger_path) + "\n")
+        sys.stderr.write(
+            nothing_checked_message(checkbox_lines, ledger_path, len(ledger.tracks))
+            + "\n"
+        )
         return NOTHING_CHECKED
     problems = validate(ledger)
     sys.stdout.write(report(problems, ledger_path) + "\n")

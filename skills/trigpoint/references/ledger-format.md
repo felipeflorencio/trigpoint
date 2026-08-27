@@ -43,7 +43,7 @@ validation: 17 missing columns, 2 missing tables.
 
 - [ ] **1.1** Write `V1__reconcile_entity_drift.sql`
 - [x] **1.2** Set `ddl-auto=validate` in the dev profile
-      **Verified:** `./gradlew bootRun` -> started, validation passed. 2026-08-27
+      **Verified:** `./gradlew bootRun`. 2026-08-27
 ```
 
 **Rule 1.** `## T<id> <name>` opens a track. The `**Scope:**` and `**Blocked by:**` lines are its
@@ -54,9 +54,23 @@ a `**Scope:**` line, so never put that line in a section that is not a track.
 bold immediately after the checkbox. Task identifiers are unique across the whole ledger; a
 duplicate is an error.
 
-**Rule 3.** A `[x]` with no `**Verified:**` line is a hard error and the build refuses. The
-`**Verified:**` text may sit on the task line itself or on an indented continuation line beneath
-it. It is not configurable.
+**Rule 3.** A `[x]` with no evidence line is a hard error and the build refuses. It is not
+configurable.
+
+Evidence is one of two markers, and the text of either may sit on the task line itself or on an
+indented continuation line beneath it. A marker owns the text up to the next marker, not to the
+end of the block.
+
+- `**Verified:** \`command\`. DATE` asserts something. The command is re-run at the end of a
+  working turn and the box unticks itself when it stops passing. The command is the first
+  backticked span; ledgers written before 0.3.0 carry a `-> output` tail after it and still read
+  correctly.
+- `**Recorded:** what happened. DATE` records something. Nothing re-runs it and no machine unticks
+  it. Its backticks quote names, not commands, and are never executed.
+
+A block carrying both is read as verified, unless the `**Verified:**` marker is empty, in which
+case it falls through to the record. Never invent a command to satisfy the gate: a proxy that
+passes whether or not the claim is true is worse than an honest record.
 
 Two further mechanics worth knowing while writing:
 

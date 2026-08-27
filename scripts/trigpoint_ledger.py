@@ -33,6 +33,9 @@ RECORDED = "recorded"
 
 EVIDENCE_MARKERS = ((EVIDENCE_MARKER, VERIFIED), (RECORD_MARKER, RECORDED))
 
+FENCE_MARKER = "```"
+TILDE_FENCE_MARKER = "~~~"
+
 # A deliberately weaker second reader, used only to answer one question the
 # grammar cannot answer about itself: how much of this document did the grammar
 # fail to claim? It is broader than TASK_LINE on purpose -- any bullet, any
@@ -68,8 +71,6 @@ DONE_HEADING_PREFIX = "definition of done"
 PLACEHOLDER_OPEN = "{{"
 PLACEHOLDER_CLOSE = "}}"
 PLACEHOLDER_BODY = re.compile(r"^[A-Za-z -]+$")
-FENCE_MARKER = "```"
-TILDE_FENCE_MARKER = "~~~"
 
 
 @dataclass
@@ -390,28 +391,61 @@ def _marker_outside_inline_code(text: str, marker: str) -> int:
     return -1
 
 
-def _apply_evidence(task: Task, block_lines: List[str]) -> Task:
-    """Attach whichever evidence marker the task block carries, and its kind.
+def _evidence_spans(block: str) -> List[Tuple[str, str]]:
+    """Each evidence marker's own text, ending where the NEXT marker begins.
 
-    A block carrying both is read as VERIFIED: a command that can be re-run is
-    the stronger claim, and the record beside it loses nothing by being kept as
-    prose.
+    A marker owns the text up to the next marker, never to the end of the
+    block. Slicing to the end let a `**Verified:**` line holding prose absorb
+    the `**Recorded:**` line beneath it, keep the VERIFIED kind, and offer the
+    record's first backticked span as a command to run. The backticks in a
+    record quote repository and product names, so that turned
+    `felipeflorencio/claude-plugins` into something the shell was asked to
+    execute, and unticked a true task when the shell could not find it. A
+    ledger halfway through migrating from 0.2.0 has exactly that shape.
     """
-    block = "\n".join(block_lines)
+    found = []
     for marker, kind in EVIDENCE_MARKERS:
         position = _marker_outside_inline_code(block, marker)
         if position != -1:
-            evidence = block[position + len(marker) :]
-            task.evidence = " ".join(evidence.split()) or None
-            task.evidence_kind = kind if task.evidence else None
+            found.append((position, len(marker), kind))
+    found.sort()
+
+    spans: List[Tuple[str, str]] = []
+    for index, entry in enumerate(found):
+        position, marker_length, kind = entry
+        end = found[index + 1][0] if index + 1 < len(found) else len(block)
+        spans.append((kind, block[position + marker_length : end]))
+    return spans
+
+
+def _apply_evidence(task: Task, block_lines: List[str]) -> Task:
+    """Attach whichever evidence the task block carries, and its kind.
+
+    A block carrying both is read as VERIFIED: a command that can be re-run is
+    the stronger claim, and the record beside it loses nothing by being kept as
+    prose. A `**Verified:**` marker with nothing behind it is not a claim at
+    all, so it falls through to the record rather than standing in its way.
+    """
+    block = "\n".join(block_lines)
+    by_kind = {kind: " ".join(text.split()) for kind, text in _evidence_spans(block)}
+    for _, kind in EVIDENCE_MARKERS:
+        evidence = by_kind.get(kind)
+        if evidence:
+            task.evidence = evidence
+            task.evidence_kind = kind
             break
 
     first_line = block_lines[0] if block_lines else ""
-    for marker, _ in EVIDENCE_MARKERS:
-        first_line_marker = _marker_outside_inline_code(first_line, marker)
-        if first_line_marker != -1:
-            first_line = first_line[:first_line_marker]
-            break
+    positions = [
+        position
+        for position in (
+            _marker_outside_inline_code(first_line, marker)
+            for marker, _ in EVIDENCE_MARKERS
+        )
+        if position != -1
+    ]
+    if positions:
+        first_line = first_line[: min(positions)]
     task.text = " ".join(first_line.split())
     return task
 

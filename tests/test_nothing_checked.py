@@ -11,7 +11,10 @@ the regression test.
 
 import contextlib
 import io
+import os
 import pathlib
+import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -104,9 +107,6 @@ class CheckboxCountingTests(unittest.TestCase):
             self.assertGreaterEqual(count_checkbox_lines(text), claimed, name)
 
 
-if __name__ == "__main__":
-    unittest.main()
-
 
 sys.path.insert(0, str(ROOT / "hooks"))
 
@@ -142,3 +142,120 @@ class HooksSpeakUpWhenNothingParsedTests(unittest.TestCase):
         import stop
 
         self.assertIn("zero tasks", stop.nothing_parsed_message(33))
+
+
+class StopHookActuallySpeaksTests(unittest.TestCase):
+    """The Stop hook must RUN its guard, not merely be able to phrase it.
+
+    A test that calls the message helper proves the sentence exists. It does
+    not prove the hook ever reaches it, and the hook is the half that matters:
+    silence at the end of a turn is read as a clean ledger. Deleting the guard
+    from `stop.main()` once left the whole suite green.
+    """
+
+    def run_stop_hook_on(self, markdown_text):
+        directory = tempfile.mkdtemp(prefix="trigpoint-stop-")
+        self.addCleanup(shutil.rmtree, directory, True)
+        os.makedirs(os.path.join(directory, ".trigpoint"))
+        with open(os.path.join(directory, "ROADMAP.md"), "w", encoding="utf-8") as handle:
+            handle.write(markdown_text)
+        return subprocess.run(
+            [sys.executable, str(ROOT / "hooks" / "stop.py")],
+            cwd=directory, capture_output=True, text=True, env=dict(os.environ),
+        )
+
+    def test_it_says_nothing_was_re_proved_when_the_ledger_parses_as_zero_tasks(self):
+        finished = self.run_stop_hook_on(EMPTY)
+        self.assertIn("zero tasks", finished.stdout)
+        self.assertIn("NOTHING", finished.stdout)
+
+    def test_it_names_the_checkbox_lines_it_could_see(self):
+        reference = (ROOT / "tests/fixtures/reference_ledger.md").read_text(encoding="utf-8")
+        self.assertIn("33", self.run_stop_hook_on(reference).stdout)
+
+    def test_it_does_not_cry_zero_tasks_at_a_healthy_ledger(self):
+        finished = self.run_stop_hook_on(HEALTHY)
+        self.assertNotIn("zero tasks", finished.stdout)
+        self.assertIn("never been approved", finished.stdout)
+
+
+TRACK_WITHOUT_TASKS = """# Example - Roadmap
+
+## T1 - Foundation
+
+**Scope:** A track written before its tasks were broken out
+**Blocked by:** nothing
+
+## Definition of done
+
+- [ ] 1. The suite passes.
+"""
+
+
+class TheDiagnosisMustBeTrueTests(unittest.TestCase):
+    """Refusing to pass is right. Asserting a false reason for it is not.
+
+    A ledger whose tracks parsed but whose tasks are not written yet was told
+    "either this file is not a Trigpoint ledger, or the parser has stopped
+    recognising it". Both alternatives are false, and stdout contradicted
+    stderr one line apart: one track found, file may not be a ledger. The tool
+    already holds the track count; it can tell the two cases apart.
+    """
+
+    def test_a_recognised_track_with_no_tasks_is_not_called_unrecognisable(self):
+        _, _, err = run_gate(TRACK_WITHOUT_TASKS)
+        self.assertNotIn("not a Trigpoint ledger", err)
+        self.assertNotIn("stopped recognising", err)
+
+    def test_it_says_instead_that_the_tracks_carry_no_tasks_yet(self):
+        _, _, err = run_gate(TRACK_WITHOUT_TASKS)
+        self.assertIn("no tasks", err)
+        self.assertIn("1 track", err)
+
+    def test_it_still_refuses_to_report_a_pass(self):
+        code, out, _ = run_gate(TRACK_WITHOUT_TASKS)
+        self.assertEqual(code, check_drift.NOTHING_CHECKED)
+        self.assertNotIn("no problems found", out)
+
+    def test_a_file_with_no_tracks_at_all_still_gets_the_unconverted_diagnosis(self):
+        reference = (ROOT / "tests/fixtures/reference_ledger.md").read_text(encoding="utf-8")
+        _, _, err = run_gate(reference)
+        self.assertIn("not a Trigpoint ledger", err)
+
+
+class BrokenInstallIsDiagnosedTests(unittest.TestCase):
+    """A half-updated `.trigpoint/` must not look like a failing ledger.
+
+    The vendored copies are refreshed by hand. Copy the new `check_drift.py`
+    beside a stale `trigpoint_ledger.py` and the import blows up with a raw
+    traceback and exit 1 -- the code that means "your ledger has errors", so CI
+    reports a broken install as a broken plan. Exit 2 already means "cannot
+    read the ledger", which is what this is.
+    """
+
+    def run_against_stale_module(self):
+        directory = tempfile.mkdtemp(prefix="trigpoint-stale-")
+        self.addCleanup(shutil.rmtree, directory, True)
+        shutil.copy(ROOT / "scripts/check_drift.py", directory)
+        with open(os.path.join(directory, "trigpoint_ledger.py"), "w", encoding="utf-8") as handle:
+            handle.write("# a 0.2.0 copy: no count_checkbox_lines here\n")
+        with open(os.path.join(directory, "ROADMAP.md"), "w", encoding="utf-8") as handle:
+            handle.write(HEALTHY)
+        return subprocess.run(
+            [sys.executable, os.path.join(directory, "check_drift.py"), "ROADMAP.md"],
+            cwd=directory, capture_output=True, text=True,
+        )
+
+    def test_it_does_not_report_the_ledger_as_having_errors(self):
+        self.assertNotEqual(self.run_against_stale_module().returncode, 1)
+
+    def test_it_reports_an_unreadable_install_instead(self):
+        self.assertEqual(self.run_against_stale_module().returncode, 2)
+
+    def test_it_names_the_stale_copies_rather_than_printing_a_traceback(self):
+        finished = self.run_against_stale_module()
+        self.assertNotIn("Traceback", finished.stderr)
+        self.assertIn(".trigpoint", finished.stderr)
+
+if __name__ == "__main__":
+    unittest.main()

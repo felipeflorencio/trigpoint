@@ -96,9 +96,10 @@ and survive a context reset. Each contract below is machine-checked, so drift br
 | **C1** | {{ the file that holds the contract, and who updates it when }} | {{ the test or gate that fails when it drifts }} |
 | **C2** | {{ contract }} | {{ enforcement }} |
 
-**Ledger discipline.** A box above is ticked only with the verification command and its output
-recorded on a `**Verified:**` line. Never on assumption. `python3 .trigpoint/check_drift.py` fails
-the build otherwise.
+**Ledger discipline.** A box above is ticked only with evidence recorded beneath it: a
+`**Verified:**` line naming the command that was run, or a `**Recorded:**` line stating what
+happened for work no command can re-check. Never on assumption.
+`python3 .trigpoint/check_drift.py` fails the build otherwise.
 
 The format of a ticked task, as an example rather than as a live task. The evidence line may sit
 on the task line itself or indented beneath it:

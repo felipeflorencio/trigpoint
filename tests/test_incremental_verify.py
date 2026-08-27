@@ -153,3 +153,66 @@ class DeduplicationTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class AtomicWriteTests(unittest.TestCase):
+    """A plan of record must never be left half-written.
+
+    Writing with `open(path, "w")` truncates before a byte is written. Applying
+    each regression as it is found multiplies how often the process sits inside
+    that window, and it does so on precisely the path the Stop hook's
+    180-second budget kills. A crash, a full disk or a read-only checkout
+    landing there leaves the user with a ledger cut in half, which is a worse
+    outcome than the silent discard this change removed.
+
+    `scripts/install_block.py` already writes through a temporary file and
+    `os.replace`. So does this now.
+    """
+
+    def setUp(self):
+        self.ledger = LedgerOnDisk(TWO_FAILING)
+        self.addCleanup(self.ledger.cleanup)
+
+    def test_a_write_that_fails_leaves_the_previous_ledger_intact(self):
+        import builtins
+
+        before = self.ledger.read()
+        real_open = builtins.open
+
+        def explode_on_write(*args, **kwargs):
+            mode = kwargs.get("mode", args[1] if len(args) > 1 else "r")
+            if "w" in mode:
+                raise OSError("No space left on device")
+            return real_open(*args, **kwargs)
+
+        original_named = verify.tempfile.NamedTemporaryFile
+
+        def failing_named(*args, **kwargs):
+            raise OSError("No space left on device")
+
+        verify.tempfile.NamedTemporaryFile = failing_named
+        self.addCleanup(setattr, verify.tempfile, "NamedTemporaryFile", original_named)
+
+        with self.assertRaises(OSError):
+            verify.verify_ledger(self.ledger.path, runner=lambda *a, **k: Failed())
+
+        self.assertEqual(self.ledger.read(), before)
+
+    def test_no_temporary_file_is_left_behind_after_a_successful_pass(self):
+        verify.verify_ledger(self.ledger.path, runner=lambda *a, **k: Failed())
+        leftovers = [
+            name
+            for name in os.listdir(self.ledger.directory)
+            if name != "ROADMAP.md" and name != ".trigpoint"
+        ]
+        self.assertEqual(leftovers, [])
+
+    def test_the_ledger_is_never_observed_empty_while_being_rewritten(self):
+        sizes = []
+
+        def runner(command, **kwargs):
+            sizes.append(os.path.getsize(self.ledger.path))
+            return Failed()
+
+        verify.verify_ledger(self.ledger.path, runner=runner)
+        self.assertTrue(all(size > 0 for size in sizes), sizes)

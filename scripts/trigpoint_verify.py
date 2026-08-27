@@ -29,6 +29,7 @@ import os
 import re
 import subprocess
 import sys
+import tempfile
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Callable, Dict, List, Optional, Tuple
@@ -291,6 +292,32 @@ def apply_regressions(markdown_text: str, outcomes: Dict[str, Outcome]) -> Tuple
 # ------------------------------------------------------------------ driving
 
 
+def write_atomically(target_path: str, contents: str) -> None:
+    """Replace a file's contents without ever leaving it half-written.
+
+    `open(path, "w")` truncates before the first byte is written. Applying each
+    regression as it is found multiplies how often the process sits inside that
+    window, and does so on exactly the path the Stop hook's budget kills. A
+    ledger cut in half is a worse outcome than the silent discard that writing
+    incrementally removed, so the write goes to a sibling temporary file and
+    `os.replace` swaps it in one step. `scripts/install_block.py` already did
+    this; this is the same technique.
+    """
+    directory = os.path.dirname(os.path.abspath(target_path))
+    handle = tempfile.NamedTemporaryFile(
+        mode="w", encoding="utf-8", newline="", dir=directory, delete=False
+    )
+    try:
+        handle.write(contents)
+        handle.close()
+        os.replace(handle.name, target_path)
+    except Exception:
+        handle.close()
+        if os.path.exists(handle.name):
+            os.unlink(handle.name)
+        raise
+
+
 def paused(repository_root: str) -> bool:
     return os.path.exists(os.path.join(repository_root, STATE_DIRECTORY, PAUSE_FILE))
 
@@ -337,8 +364,7 @@ def verify_ledger(ledger_path: str, runner: Callable = subprocess.run,
         outcomes: Dict[str, Outcome] = {task_id: outcome for task_id in task_ids}
         updated, applied = apply_regressions(current, outcomes)
         if updated != current:
-            with open(ledger_path, "w", encoding="utf-8") as handle:
-                handle.write(updated)
+            write_atomically(ledger_path, updated)
         report.extend(applied)
 
     return report, awaiting

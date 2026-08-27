@@ -126,9 +126,6 @@ class RecordedEvidenceIsNeverReRunTests(unittest.TestCase):
         self.assertIn("not found", " ".join(report))
 
 
-if __name__ == "__main__":
-    unittest.main()
-
 
 RECORDED_ONLY = """# Example - Roadmap
 
@@ -164,3 +161,119 @@ class SessionStateCountsTests(unittest.TestCase):
 
     def test_the_bare_note_is_counted_separately(self):
         self.assertIn("1 resting on a written note only", self.state)
+
+
+BOTH_MARKERS_IN_ONE_BLOCK = """# Example - Roadmap
+
+## T1 - Publication
+
+**Scope:** A task migrated from 0.2.0, keeping its old note beside a new record
+**Blocked by:** nothing
+
+- [x] **5.2** Publish the plugin to a marketplace
+      **Verified:** reviewed by eye, nothing to re-run. 2026-08-27
+      **Recorded:** Published to `felipeflorencio/claude-plugins`; `claude plugin update
+      trigpoint` reported 0.2.0 to 0.3.0. 2026-08-27
+"""
+
+COMMAND_THEN_RECORD = """# Example - Roadmap
+
+## T1 - Publication
+
+**Scope:** A real assertion with a record kept beside it
+**Blocked by:** nothing
+
+- [x] **5.2** Ship the parser and publish it
+      **Verified:** `python3 -m unittest tests.test_ledger_parse -v`. 2026-08-27
+      **Recorded:** Published to `felipeflorencio/claude-plugins`. 2026-08-27
+"""
+
+BLANK_VERIFIED_THEN_RECORD = """# Example - Roadmap
+
+## T1 - Publication
+
+**Scope:** A blanked template line left above a real record
+**Blocked by:** nothing
+
+- [x] **5.2** Publish the plugin to a marketplace
+      **Verified:**
+      **Recorded:** Published to `felipeflorencio/claude-plugins`. 2026-08-27
+"""
+
+
+class EvidenceSpansStopAtTheNextMarkerTests(unittest.TestCase):
+    """One marker must never swallow the next one's text.
+
+    Evidence was sliced from its marker to the END of the task block, so a
+    `**Verified:**` line holding prose absorbed the `**Recorded:**` line beneath
+    it, kept the VERIFIED kind, and offered the record's first backticked span
+    as a command to run. The backticks in a record quote repository and product
+    names. Trigpoint selected `felipeflorencio/claude-plugins` as a shell
+    command, and unticked a true task when the shell could not find it.
+
+    That shape is not exotic: it is what a 0.2.0 ledger looks like halfway
+    through migrating, and the parser's own docstring invites it.
+    """
+
+    def test_a_prose_assertion_never_borrows_a_command_from_the_record_below(self):
+        selected = verify.selectable(parse_ledger(BOTH_MARKERS_IN_ONE_BLOCK))
+        self.assertEqual(selected, [])
+
+    def test_the_assertion_text_stops_where_the_record_begins(self):
+        task = task_by_id(BOTH_MARKERS_IN_ONE_BLOCK, "5.2")
+        self.assertNotIn("Recorded:", task.evidence)
+        self.assertNotIn("felipeflorencio", task.evidence)
+
+    def test_a_real_command_beside_a_record_still_runs_and_the_record_does_not(self):
+        commands = [command for _, command in verify.selectable(parse_ledger(COMMAND_THEN_RECORD))]
+        self.assertEqual(commands, ["python3 -m unittest tests.test_ledger_parse -v"])
+
+    def test_an_empty_assertion_marker_falls_through_to_the_record(self):
+        task = task_by_id(BLANK_VERIFIED_THEN_RECORD, "5.2")
+        self.assertEqual(task.evidence_kind, "recorded")
+        self.assertEqual(verify.selectable(parse_ledger(BLANK_VERIFIED_THEN_RECORD)), [])
+
+    def test_a_block_carrying_both_is_still_read_as_an_assertion(self):
+        self.assertEqual(task_by_id(COMMAND_THEN_RECORD, "5.2").evidence_kind, "verified")
+
+    def test_the_task_text_is_cut_at_whichever_marker_comes_first(self):
+        inline = BOTH_MARKERS_IN_ONE_BLOCK.replace(
+            "- [x] **5.2** Publish the plugin to a marketplace\n"
+            "      **Verified:** reviewed by eye, nothing to re-run. 2026-08-27\n",
+            "- [x] **5.2** Publish it   **Recorded:** by hand `foo/bar`. 2026-08-27\n",
+        )
+        self.assertEqual(task_by_id(inline, "5.2").text, "Publish it")
+
+
+class DashboardShowsWhichKindOfClaimTests(unittest.TestCase):
+    """The dashboard is one of the three artefacts, and it flattened the difference.
+
+    A re-proved command and a person's written word rendered as the same grey
+    line. The whole point of the two kinds is that they are different strengths
+    of claim, so a reader looking at the dashboard could not tell which claims a
+    machine keeps honest and which rest on somebody's memory.
+    """
+
+    def rendered(self):
+        sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / "scripts"))
+        from trigpoint_render import render_dashboard
+
+        return render_dashboard(
+            parse_ledger(BOTH_KINDS), "Example", "Two kinds of evidence", [], []
+        )
+
+    def test_an_assertion_and_a_record_are_not_rendered_identically(self):
+        html = self.rendered()
+        self.assertIn("evidence verified", html)
+        self.assertIn("evidence recorded", html)
+
+    def test_the_record_is_labelled_so_a_reader_knows_it_is_not_re_run(self):
+        self.assertIn("not re-run", self.rendered())
+
+    def test_both_evidence_texts_still_appear(self):
+        html = self.rendered()
+        self.assertIn("tests.test_ledger_parse", html)
+        self.assertIn("felipeflorencio/claude-plugins", html)
+
+if __name__ == "__main__":
+    unittest.main()

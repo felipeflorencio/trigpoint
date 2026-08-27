@@ -59,7 +59,8 @@ same evidence requirement, and here the requirement is mechanical.
       **Verified:** `./gradlew bootRun`. 2026-08-27
 ```
 
-**A `[x]` with no `**Verified:**` line is a hard error and the build refuses.**
+**A `[x]` with no evidence line is a hard error and the build refuses.** Evidence means a
+`**Verified:**` line or a `**Recorded:**` line; which one, and why it matters, is the next section.
 This is not
 configurable. The moment it can be turned off, someone turns it off, and automatic mode stops being
 safe.

@@ -52,9 +52,10 @@ count cannot disagree with the tasks it counts, because it is derived from them.
 integration regenerates it and fails the build on any difference, so drift is not discouraged, it
 is impossible.
 
-**A tick requires evidence.** A ticked task must carry the command that was run and what it
-printed. There is no exemption for obvious tasks, and no setting to turn it off, because the moment
-there is one an agent decides what counts as obvious. Six months later you can see not only that
+**A tick requires evidence.** A ticked task must carry the command that was run, or, when no
+command can re-check the work, a record of what happened. There is no exemption for obvious tasks,
+and no setting to turn it off, because the moment there is one an agent decides what counts as
+obvious. Six months later you can see not only that
 something was done, but how anyone knew.
 
 **The rules live in your repository.** They are written into your `CLAUDE.md` as plain markdown, so
@@ -207,6 +208,8 @@ before, just without the ledger state and the re-run. The technique is borrowed 
 | --- | --- |
 | `/trigpoint` | Runs the whole thing from the beginning: light pass, audit, premise check, the question ladder, design sections, then emits the three artefacts. Any argument is your stated goal for the work. |
 | `/trigpoint-sync` | Regenerates the progress table and the dashboard from the ledger. Reports what applied and what did not, separately and verbatim. |
+| `/trigpoint-verify` | Re-runs the commands recorded in `**Verified:**` lines and unticks anything that stopped passing. Each distinct command is approved once before it will ever run. |
+| `/trigpoint-pause` | Stops the hooks in this repository until you undo it with `rm .trigpoint/paused`. |
 
 A whole run has **seven interaction touchpoints**, and after the last one the skill never asks
 again on that project. "Blocks" means it stops and waits, because only you hold that fact and
@@ -296,8 +299,8 @@ tracks**.
 
 - **It does not replace static analysis.** It establishes ground truth for planning. It is not a
   linter and it is not a type checker; run those too.
-- **It is version 0.1.0.** The ledger and the drift gate are covered by 129 tests. The plan it
-  hands you is a strong first draft to argue with, not a verdict.
+- **It is version 0.3.0.** The ledger, the drift gate and the verifier are covered by 275
+  tests. The plan it hands you is a strong first draft to argue with, not a verdict.
 
 ---
 
@@ -311,8 +314,10 @@ tracks**.
 | `scripts/trigpoint_render.py` | Renders the parsed ledger into the progress table and the dashboard HTML |
 | `scripts/build_dashboard.py` | Regenerates the progress table in place and writes the dashboard |
 | `scripts/check_drift.py` | The read-only CI gate over the same parse |
+| `scripts/trigpoint_verify.py` | Re-runs the commands the ledger records and unticks what stopped passing. Never ticks |
+| `hooks/` | The session-start and end-of-turn hooks, and the guard that keeps both silent in any repository that never opted in |
 | `scripts/install_block.py` | Installs the delimited block into a target repository's `CLAUDE.md` |
-| `commands/` | The `/trigpoint` and `/trigpoint-sync` slash commands |
+| `commands/` | The four slash commands: `/trigpoint`, `/trigpoint-sync`, `/trigpoint-verify`, `/trigpoint-pause` |
 | `ROADMAP.md` | This repository's own ledger, kept under its own rules |
 | `assets/cover.html` | The source of the cover image, version-controlled rather than a loose binary |
 

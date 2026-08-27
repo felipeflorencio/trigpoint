@@ -9,7 +9,7 @@ import html as html_module
 import re
 from typing import List, Tuple
 
-from trigpoint_ledger import Ledger, Track
+from trigpoint_ledger import RECORDED, VERIFIED, Ledger, Track
 
 
 def heading_text(track: Track) -> str:
@@ -100,6 +100,7 @@ ul.tasks li:first-child { border-top: 0; }
 .state.done { color: var(--done); }
 .task-id { display: inline-block; min-width: 2.6rem; color: var(--muted);
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .82rem; }
+.evidence.recorded { border-left: 2px solid var(--rule); padding-left: .5rem; font-style: italic; }
 .evidence { display: block; color: var(--muted); font-size: .8rem;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace; padding-left: 1.4rem; }
 footer { color: var(--muted); font-size: .82rem; border-top: 1px solid var(--rule);
@@ -158,8 +159,17 @@ def render_dashboard(
                 )
             )
             if task.evidence:
+                # A re-proved command and a person's written word are different
+                # strengths of claim. Rendering them the same grey line hid the
+                # only distinction the dashboard exists to make legible.
+                kind = task.evidence_kind or VERIFIED
+                label = (
+                    "recorded, not re-run: " if kind == RECORDED else ""
+                )
                 parts.append(
-                    '<span class="evidence">{0}</span>'.format(escape(task.evidence))
+                    '<span class="evidence {0}">{1}{2}</span>'.format(
+                        escape(kind), label, escape(task.evidence)
+                    )
                 )
             parts.append("</li>")
         parts.append("</ul></section>")

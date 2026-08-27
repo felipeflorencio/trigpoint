@@ -24,8 +24,8 @@ BLOCK_BODY = """## The ledger
 `ROADMAP.md` is this repository's plan of record. Read it before starting work.
 
 - Work only on tracks whose **Blocked by** is satisfied.
-- A box is ticked ONLY after its verification has actually run. Record the
-  command and its output on a `**Verified:**` line. Never tick on assumption.
+- A box is ticked ONLY after its evidence actually exists.
+  Never tick on assumption.
 - Work discovered mid-flight that is not in the ledger gets ADDED to the right
   track when it is found, not done silently.
 - A finding that contradicts the ledger is raised, not quietly edited away.
